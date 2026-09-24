@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block heading %}Audit trail{% endblock %}
+{% block content %}
+<form class="row g-2 mb-3" method="get">
+  <div class="col-auto"><input class="form-control form-control-sm" name="q" value="{{ q }}" placeholder="Search user, record, message"></div>
+  <div class="col-auto"><select class="form-select form-select-sm" name="action"><option value="">All actions</option>
+    {% for v, l in actions %}<option value="{{ v }}" {% if v == action %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
+  <div class="col-auto"><button class="btn btn-sm btn-primary">Filter</button></div>
+</form>
+<div class="card"><div class="card-body p-0">
+  <table class="table table-sm table-hover small mb-0">
+    <thead><tr><th>Date / time</th><th>User</th><th>Action</th><th>Record</th><th>Details</th><th>IP</th></tr></thead>
+    {% for log in logs %}
+      <tr><td class="text-nowrap">{{ log.created_at|date:"d M Y H:i" }}</td><td>{{ log.user|default:"system" }}</td><td>{{ log.get_action_display }}</td>
+        <td>{{ log.model }} {{ log.object_repr }}</td><td>{{ log.message }}</td><td>{{ log.ip_address|default:"" }}</td></tr>
+    {% empty %}<tr><td colspan="6" class="text-muted p-3">No entries.</td></tr>{% endfor %}
+  </table>
+</div></div>
+{% endblock %}

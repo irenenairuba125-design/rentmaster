@@ -1,0 +1,45 @@
+{% extends "base.html" %}{% load rm %}
+{% block heading %}Maintenance request {{ req.ticket }}{% endblock %}
+{% block content %}
+<div class="card mb-3"><div class="card-body">
+  <div class="d-flex flex-wrap gap-2">
+    {% for s in flow %}
+      <span class="badge rounded-pill {% if req.status == s %}text-bg-primary{% else %}text-bg-light border{% endif %} px-3 py-2">{{ s.label }}</span>
+      {% if not forloop.last %}<i class="bi bi-arrow-right text-muted"></i>{% endif %}
+    {% endfor %}
+    {% if req.status == "CANCELLED" %}<span class="badge text-bg-dark px-3 py-2">Cancelled</span>{% endif %}
+  </div>
+</div></div>
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="card mb-3"><div class="card-body">
+      <div class="d-flex justify-content-between"><h2 class="h5">{{ req.title }}</h2>{% badge req.priority req.get_priority_display %}</div>
+      <div class="small text-muted mb-2">Unit {{ req.unit.number }} · {{ req.unit.building.property.name }} · reported by {{ req.reported_by|default:"—" }} on {{ req.created_at|date:"d M Y H:i" }}</div>
+      <p>{{ req.description|linebreaksbr }}</p>
+      {% if req.photo %}<a href="{{ req.photo.url }}" target="_blank"><img src="{{ req.photo.url }}" class="img-fluid rounded" style="max-height:260px" alt="Photo"></a>{% endif %}
+      <div class="small mt-2">Assigned to: <strong>{{ req.assigned_to|default:"—" }}</strong>{% if req.vendor %} · Vendor: {{ req.vendor }}{% endif %}{% if req.cost %} · Cost: {{ req.cost|money }}{% endif %}</div>
+    </div></div>
+    <div class="card"><div class="card-body">
+      <h2 class="h6">Updates</h2>
+      {% for c in comments %}
+        <div class="border-start border-3 ps-3 mb-3"><div class="small text-muted">{{ c.author|default:"—" }} · {{ c.created_at|date:"d M Y H:i" }}</div>
+          <div>{{ c.body|linebreaksbr }}</div>{% if c.photo %}<a href="{{ c.photo.url }}" target="_blank" class="small">photo</a>{% endif %}</div>
+      {% empty %}<p class="text-muted small">No updates yet.</p>{% endfor %}
+      <form method="post" enctype="multipart/form-data" action="{% url 'maintenance:comment' req.pk %}">{% csrf_token %}
+        {{ comment_form.body }}<div class="d-flex gap-2 mt-2">{{ comment_form.photo }}<button class="btn btn-sm btn-outline-primary text-nowrap">Post update</button></div>
+      </form>
+    </div></div>
+  </div>
+  {% if update_form %}
+  <div class="col-lg-5"><div class="card"><div class="card-body">
+    <h2 class="h6">Manage request</h2>
+    <form method="post">{% csrf_token %}<input type="hidden" name="update" value="1">
+      {% for field in update_form %}
+        <div class="mb-2"><label class="form-label small fw-semibold">{{ field.label }}</label>{{ field }}{% for e in field.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}</div>
+      {% endfor %}
+      <button class="btn btn-primary btn-sm">Update</button>
+    </form>
+  </div></div></div>
+  {% endif %}
+</div>
+{% endblock %}

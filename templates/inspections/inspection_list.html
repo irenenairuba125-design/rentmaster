@@ -1,0 +1,16 @@
+{% extends "base.html" %}{% load rm %}
+{% block heading %}Inspections{% endblock %}
+{% block content %}
+{% if can_inspect %}<a class="btn btn-sm btn-primary mb-3" href="{% url 'inspections:create' %}"><i class="bi bi-clipboard-check"></i> New inspection</a>{% endif %}
+<div class="card"><div class="card-body p-0">
+  <table class="table table-hover mb-0">
+    <thead><tr><th>No.</th><th>Date</th><th>Property / Unit</th><th>Type</th><th>Tenant</th><th>Inspector</th><th>Overall</th></tr></thead>
+    {% for i in inspections %}
+      <tr><td><a href="{% url 'inspections:detail' i.pk %}">{{ i.number }}</a></td><td>{{ i.inspection_date|date:"d M Y" }}</td>
+        <td>{{ i.unit.building.property.name }} · {{ i.unit.number }}</td><td>{{ i.get_kind_display }}</td>
+        <td>{{ i.lease.tenant.full_name|default:"—" }}</td><td>{{ i.inspector|default:"—" }}</td>
+        <td>{% badge i.overall i.get_overall_display %}</td></tr>
+    {% empty %}<tr><td colspan="7" class="text-muted p-3">No inspections yet.</td></tr>{% endfor %}
+  </table>
+</div></div>
+{% endblock %}

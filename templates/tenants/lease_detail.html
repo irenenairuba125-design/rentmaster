@@ -1,0 +1,92 @@
+{% extends "base.html" %}{% load rm %}
+{% block heading %}Lease · {{ lease.tenant.full_name }} · {{ lease.unit.number }}{% endblock %}
+{% block content %}
+{% if lease.status == "ACTIVE" and lease.days_to_expiry <= 30 %}
+  <div class="alert alert-warning"><i class="bi bi-alarm"></i> Lease for unit {{ lease.unit.number }} expires in {{ lease.days_to_expiry }} days.</div>
+{% endif %}
+<div class="row g-3">
+  <div class="col-lg-5">
+    <div class="card mb-3"><div class="card-body">
+      <dl class="row small mb-0">
+        <dt class="col-5">Tenant</dt><dd class="col-7">{% if nav.properties %}<a href="{% url 'tenants:detail' lease.tenant.pk %}">{{ lease.tenant }}</a>{% else %}{{ lease.tenant }}{% endif %}</dd>
+        <dt class="col-5">Property / Unit</dt><dd class="col-7">{{ lease.unit.building.property.name }} · {{ lease.unit.number }}</dd>
+        <dt class="col-5">Period</dt><dd class="col-7">{{ lease.start_date|date:"d M Y" }} → {{ lease.end_date|date:"d M Y" }}</dd>
+        <dt class="col-5">Monthly rent</dt><dd class="col-7">{{ lease.monthly_rent|money }}</dd>
+        <dt class="col-5">Frequency</dt><dd class="col-7">{{ lease.get_payment_frequency_display }} ({{ lease.period_rent|money }} per period)</dd>
+        <dt class="col-5">Due day</dt><dd class="col-7">{{ lease.due_day }} · grace {{ lease.grace_period_days }} days</dd>
+        <dt class="col-5">Late fee</dt><dd class="col-7">{{ lease.late_fee|money }}</dd>
+        <dt class="col-5">Security deposit</dt><dd class="col-7">{{ lease.security_deposit|money }}</dd>
+        <dt class="col-5">Status</dt><dd class="col-7">{% badge lease.status lease.get_status_display %}</dd>
+        {% if lease.agreement %}<dt class="col-5">Agreement</dt><dd class="col-7"><a href="{% url 'lease_agreement' lease.pk %}">Download</a></dd>{% endif %}
+      </dl>
+      {% if lease.notes %}<p class="small text-muted mt-2 mb-0">{{ lease.notes|linebreaksbr }}</p>{% endif %}
+      {% if nav.can_manage %}<a class="btn btn-sm btn-light mt-2" href="{% url 'tenants:lease_edit' lease.pk %}">Edit lease</a>{% endif %}
+    </div></div>
+
+    <div class="card mb-3"><div class="card-body">
+      <h2 class="h6">Account</h2>
+      <table class="table table-sm small mb-0">
+        <tr><td>Total billed</td><td class="text-end">{{ arrears.billed|money }}</td></tr>
+        <tr><td>Total paid</td><td class="text-end">{{ arrears.paid|money }}</td></tr>
+        <tr class="fw-bold"><td>Balance</td><td class="text-end">{{ arrears.balance|money }}</td></tr>
+        <tr><td>Status</td><td class="text-end">{% badge arrears.classification %}{% if arrears.days_overdue %} · {{ arrears.days_overdue }} days{% endif %}</td></tr>
+      </table>
+    </div></div>
+
+    <div class="card mb-3"><div class="card-body">
+      <h2 class="h6">Security deposit</h2>
+      <table class="table table-sm small">
+        {% for t in deposit_transactions %}<tr><td>{{ t.date|date:"d M Y" }}</td><td>{{ t.get_kind_display }}</td><td>{{ t.description }}</td><td class="text-end">{% if t.kind != "RECEIVED" %}-{% endif %}{{ t.amount|num }}</td></tr>
+        {% empty %}<tr><td class="text-muted">No deposit transactions.</td></tr>{% endfor %}
+        <tr class="fw-bold"><td colspan="3">Currently held</td><td class="text-end">{{ deposit_held|money }}</td></tr>
+      </table>
+      {% if deposit_form %}
+      <form method="post" action="{% url 'tenants:lease_deposit_add' lease.pk %}" class="row g-2">
+        {% csrf_token %}
+        <div class="col-6">{{ deposit_form.kind }}</div><div class="col-6">{{ deposit_form.amount }}</div>
+        <div class="col-8">{{ deposit_form.description }}</div><div class="col-4">{{ deposit_form.date }}</div>
+        <div class="col-12"><button class="btn btn-sm btn-outline-primary">Record</button></div>
+      </form>
+      {% endif %}
+    </div></div>
+
+    {% if lease.status != "ACTIVE" and nav.can_manage %}
+    <div class="card mb-3"><div class="card-body">
+      <h2 class="h6">Move-out checklist</h2>
+      <div class="d-flex flex-wrap gap-2">
+        <a class="btn btn-sm btn-outline-primary" href="{% url 'inspections:create' %}?lease={{ lease.pk }}&kind=MOVE_OUT"><i class="bi bi-clipboard-check"></i> Move-out inspection</a>
+        {% if lease.unit.status != "OCCUPIED" %}<a class="btn btn-sm btn-outline-primary" href="{% url 'vacancies:listing_create' %}?unit={{ lease.unit.pk }}"><i class="bi bi-megaphone"></i> Publish vacancy</a>{% endif %}
+      </div>
+    </div></div>
+    {% endif %}
+    {% if lease.inspections.exists %}
+    <div class="card mb-3"><div class="card-body">
+      <h2 class="h6">Inspections</h2>
+      <ul class="small ps-3 mb-0">{% for i in lease.inspections.all %}<li><a href="{% url 'inspections:detail' i.pk %}">{{ i.number }}</a> · {{ i.get_kind_display }} · {{ i.inspection_date|date:"d M Y" }} · {{ i.get_overall_display }}</li>{% endfor %}</ul>
+    </div></div>
+    {% endif %}
+
+    {% if terminate_form %}
+    <div class="card border-danger"><div class="card-body">
+      <h2 class="h6 text-danger">Move-out / terminate lease</h2>
+      <form method="post" action="{% url 'tenants:lease_terminate' lease.pk %}" class="row g-2" onsubmit="return confirm('Terminate this lease and mark the unit vacant?')">
+        {% csrf_token %}
+        <div class="col-5">{{ terminate_form.move_out_date }}</div><div class="col-7">{{ terminate_form.reason }}</div>
+        <div class="col-12"><button class="btn btn-sm btn-danger">Terminate</button></div>
+      </form>
+    </div></div>
+    {% endif %}
+  </div>
+  <div class="col-lg-7">
+    <div class="card"><div class="card-body">
+      <h2 class="h6">Invoices</h2>
+      <table class="table table-sm small mb-0">
+        <thead><tr><th>Invoice</th><th>Period</th><th>Due</th><th class="text-end">Total</th><th class="text-end">Balance</th><th>Status</th></tr></thead>
+        {% for inv in invoices %}<tr><td><a href="{% url 'billing:invoice_detail' inv.pk %}">{{ inv.number }}</a></td><td>{{ inv.period_start|date:"M Y" }}</td><td>{{ inv.due_date|date:"d M Y" }}</td>
+          <td class="text-end">{{ inv.total|num }}</td><td class="text-end">{{ inv.balance|num }}</td><td>{% badge inv.status inv.get_status_display %}</td></tr>
+        {% empty %}<tr><td class="text-muted">No invoices.</td></tr>{% endfor %}
+      </table>
+    </div></div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,18 @@
+{% extends "base.html" %}{% load rm %}
+{% block heading %}Tenants{% endblock %}
+{% block content %}
+<div class="d-flex gap-2 mb-3">
+  <form class="d-flex gap-2" method="get"><input class="form-control form-control-sm" name="q" value="{{ q }}" placeholder="Name, ID or phone"><button class="btn btn-sm btn-light">Search</button></form>
+  {% if nav.can_manage %}<a href="{% url 'tenants:create' %}" class="btn btn-primary btn-sm ms-auto"><i class="bi bi-person-plus"></i> Register tenant</a>{% endif %}
+</div>
+<div class="card"><div class="card-body p-0">
+  <table class="table table-hover mb-0">
+    <thead><tr><th>Tenant ID</th><th>Name</th><th>Phone</th><th>Current unit</th><th>Portal</th></tr></thead>
+    {% for t in tenants %}
+      <tr><td><a href="{% url 'tenants:detail' t.pk %}">{{ t.tenant_id }}</a></td><td>{{ t.full_name }}</td><td>{{ t.phone }}</td>
+        <td>{% with l=t.active_lease %}{% if l %}{{ l.unit.number }} · {{ l.unit.building.property.name }}{% else %}<span class="text-muted">—</span>{% endif %}{% endwith %}</td>
+        <td>{% if t.user_id %}<i class="bi bi-check-circle text-success"></i>{% else %}<span class="text-muted">—</span>{% endif %}</td></tr>
+    {% empty %}<tr><td colspan="5" class="text-muted p-3">No tenants found.</td></tr>{% endfor %}
+  </table>
+</div></div>
+{% endblock %}

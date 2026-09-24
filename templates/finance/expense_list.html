@@ -1,0 +1,28 @@
+{% extends "base.html" %}{% load rm %}
+{% block heading %}Expenses{% endblock %}
+{% block content %}
+<div class="row g-3">
+  {% if form %}
+  <div class="col-lg-4"><div class="card"><div class="card-body">
+    <h2 class="h6">Record expense</h2>
+    {% include "partials/form_fields.html" with submit_label="Save expense" action=request.path %}
+  </div></div></div>
+  {% endif %}
+  <div class="{% if form %}col-lg-8{% else %}col-12{% endif %}">
+    <form class="d-flex gap-2 mb-2" method="get">
+      <select name="category" class="form-select form-select-sm" style="width:auto" onchange="this.form.submit()"><option value="">All categories</option>
+        {% for v, l in categories %}<option value="{{ v }}" {% if v == category %}selected{% endif %}>{{ l }}</option>{% endfor %}</select>
+      <div class="ms-auto fw-semibold">Total: {{ total|money }}</div>
+    </form>
+    <div class="card"><div class="card-body p-0">
+      <table class="table table-sm table-hover mb-0">
+        <thead><tr><th>Date</th><th>Property</th><th>Category</th><th>Description</th><th>Payee</th><th class="text-end">Amount</th></tr></thead>
+        {% for e in expenses %}
+          <tr><td>{{ e.date|date:"d M Y" }}</td><td>{{ e.property.name }}</td><td>{{ e.get_category_display }}</td>
+            <td>{{ e.description }}{% if e.receipt %} <a href="{% url 'expense_receipt' e.pk %}" target="_blank"><i class="bi bi-paperclip"></i></a>{% endif %}</td><td>{{ e.payee }}</td><td class="text-end">{{ e.amount|num }}</td></tr>
+        {% empty %}<tr><td colspan="6" class="text-muted p-3">No expenses.</td></tr>{% endfor %}
+      </table>
+    </div></div>
+  </div>
+</div>
+{% endblock %}

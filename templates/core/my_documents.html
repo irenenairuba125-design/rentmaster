@@ -1,0 +1,26 @@
+{% extends "base.html" %}{% load rm %}
+{% block heading %}My documents{% endblock %}
+{% block content %}
+<div class="row g-3">
+  <div class="col-lg-6"><div class="card h-100"><div class="card-body">
+    <h2 class="h6">Tenancy agreements</h2>
+    <ul class="small ps-3">
+      {% for l in leases %}<li>Unit {{ l.unit.number }} · {{ l.start_date|date:"d M Y" }} → {{ l.end_date|date:"d M Y" }} ·
+        {% if l.agreement %}<a href="{% url 'lease_agreement' l.pk %}">Download</a>{% else %}<span class="text-muted">no signed copy uploaded</span>{% endif %}</li>
+      {% empty %}<li class="text-muted">None</li>{% endfor %}
+    </ul>
+    <h2 class="h6 mt-3">Documents</h2>
+    <ul class="small ps-3 mb-0">
+      {% for d in documents %}<li><a href="{% url 'tenant_document' d.pk %}" target="_blank">{{ d.title }}</a> <span class="text-muted">{{ d.uploaded_at|date:"d M Y" }}</span></li>
+      {% empty %}<li class="text-muted">None</li>{% endfor %}
+    </ul>
+  </div></div></div>
+  <div class="col-lg-6"><div class="card h-100"><div class="card-body">
+    <h2 class="h6">Receipts</h2>
+    <table class="table table-sm small mb-0">
+      {% for r in receipts %}<tr><td><a href="{% url 'billing:receipt_detail' r.pk %}">{{ r.number }}</a></td><td>{{ r.payment.verified_at|date:"d M Y" }}</td><td class="text-end">{{ r.payment.amount|money }}</td></tr>
+      {% empty %}<tr><td class="text-muted">No receipts.</td></tr>{% endfor %}
+    </table>
+  </div></div></div>
+</div>
+{% endblock %}

@@ -1,0 +1,60 @@
+{% extends "base.html" %}{% load rm %}
+{% block heading %}Inspection {{ inspection.number }}{% endblock %}
+{% block content %}
+<div class="row g-3">
+  <div class="col-lg-7"><div class="card"><div class="card-body p-4">
+    <div class="d-flex justify-content-between">
+      <div>
+        <div class="h5 mb-0">INSPECTION #{{ inspection.number }}</div>
+        <div class="small text-muted">{{ inspection.get_kind_display }} inspection</div>
+      </div>
+      <div class="text-end">{% badge inspection.overall inspection.get_overall_display %}</div>
+    </div>
+    <hr>
+    <dl class="row small">
+      <dt class="col-4">Property</dt><dd class="col-8">{{ inspection.unit.building.property.name }}</dd>
+      <dt class="col-4">Unit</dt><dd class="col-8">{{ inspection.unit.number }}</dd>
+      {% if inspection.lease %}<dt class="col-4">Tenant</dt><dd class="col-8">{{ inspection.lease.tenant.full_name }}</dd>{% endif %}
+      <dt class="col-4">Inspector</dt><dd class="col-8">{{ inspection.inspector|default:"—" }}</dd>
+      <dt class="col-4">Date</dt><dd class="col-8">{{ inspection.inspection_date|date:"d/m/Y" }}</dd>
+    </dl>
+    <table class="table table-sm">
+      {% for item in items %}
+        <tr>
+          <td>{{ item.area }}</td>
+          <td>{% if item.condition == "GOOD" %}<span class="text-success">✓ Good</span>{% elif item.condition == "NA" %}<span class="text-muted">n/a</span>{% else %}<span class="{% if item.condition == 'DAMAGED' %}text-danger{% else %}text-warning{% endif %}">⚠ {{ item.get_condition_display }}</span>{% endif %}</td>
+          <td class="small text-muted">{{ item.notes }}</td>
+          <td class="text-end no-print">
+            {% if item.maintenance_request %}<a class="small" href="{% url 'maintenance:detail' item.maintenance_request.pk %}">{{ item.maintenance_request.ticket }}</a>
+            {% elif can_inspect and item.condition == "NEEDS_REPAIR" or can_inspect and item.condition == "DAMAGED" %}
+              <form method="post" action="{% url 'inspections:item_to_maintenance' item.pk %}">{% csrf_token %}<button class="btn btn-sm btn-outline-danger py-0">Open ticket</button></form>
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+    </table>
+    <div class="small">Photos: {{ photos|length }} · Overall status: <strong>{{ inspection.get_overall_display|upper }}</strong></div>
+    {% if inspection.notes %}<p class="small mt-2 mb-0">{{ inspection.notes|linebreaksbr }}</p>{% endif %}
+    <div class="d-flex gap-2 mt-3 no-print">
+      <button class="btn btn-light btn-sm" onclick="window.print()"><i class="bi bi-printer"></i> Print</button>
+      {% if inspection.kind == "MOVE_OUT" and inspection.lease and nav.is_finance %}
+        <a class="btn btn-sm btn-outline-primary" href="{% url 'tenants:lease_detail' inspection.lease.pk %}">Record deposit deductions / refund</a>
+      {% endif %}
+    </div>
+  </div></div></div>
+  <div class="col-lg-5">
+    <div class="card"><div class="card-body">
+      <h2 class="h6">Photos</h2>
+      <div class="row g-2 mb-3">
+        {% for p in photos %}<div class="col-6"><a href="{{ p.photo.url }}" target="_blank"><img src="{{ p.photo.url }}" class="img-fluid rounded" alt="{{ p.caption }}"></a><div class="small text-muted">{{ p.caption }}</div></div>
+        {% empty %}<div class="col-12 small text-muted">No photos.</div>{% endfor %}
+      </div>
+      {% if photo_form %}
+      <form method="post" enctype="multipart/form-data" class="d-flex flex-column gap-2 no-print">{% csrf_token %}
+        {{ photo_form.photo }}{{ photo_form.caption }}<button class="btn btn-sm btn-outline-primary">Add photo</button>
+      </form>
+      {% endif %}
+    </div></div>
+  </div>
+</div>
+{% endblock %}

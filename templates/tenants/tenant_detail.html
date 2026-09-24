@@ -1,0 +1,55 @@
+{% extends "base.html" %}{% load rm %}
+{% block heading %}{{ tenant.full_name }} <span class="text-muted small">{{ tenant.tenant_id }}</span>{% endblock %}
+{% block content %}
+<div class="row g-3">
+  <div class="col-lg-4">
+    <div class="card mb-3"><div class="card-body">
+      {% if tenant.photo %}<img src="{% url 'tenant_photo' tenant.pk %}" class="rounded mb-2" style="width:96px;height:96px;object-fit:cover" alt="">{% endif %}
+      <dl class="row small mb-0">
+        <dt class="col-5">Phone</dt><dd class="col-7">{{ tenant.phone }}</dd>
+        <dt class="col-5">Email</dt><dd class="col-7">{{ tenant.email|default:"—" }}</dd>
+        <dt class="col-5">ID / Passport</dt><dd class="col-7">{{ tenant.national_id|default:"—" }}</dd>
+        <dt class="col-5">Occupation</dt><dd class="col-7">{{ tenant.occupation|default:"—" }}</dd>
+        <dt class="col-5">Address</dt><dd class="col-7">{{ tenant.current_address|default:"—" }}</dd>
+        <dt class="col-5">Emergency</dt><dd class="col-7">{{ tenant.emergency_contact_name|default:"—" }} {{ tenant.emergency_contact_phone }}</dd>
+        <dt class="col-5">Portal login</dt><dd class="col-7">{% if tenant.user %}{{ tenant.user.username }}{% else %}none{% endif %}</dd>
+      </dl>
+      {% if nav.can_manage %}
+      <div class="d-flex flex-wrap gap-2 mt-3">
+        <a class="btn btn-sm btn-light" href="{% url 'tenants:edit' tenant.pk %}">Edit</a>
+        <a class="btn btn-sm btn-success" href="{% url 'tenants:lease_create' %}?tenant={{ tenant.pk }}">New lease</a>
+        {% if not tenant.user %}<form method="post" action="{% url 'tenants:create_login' tenant.pk %}">{% csrf_token %}<button class="btn btn-sm btn-outline-primary">Create portal login</button></form>{% endif %}
+      </div>
+      {% endif %}
+    </div></div>
+    <div class="card"><div class="card-body">
+      <h2 class="h6">Documents</h2>
+      <ul class="small ps-3">
+        {% for d in tenant.documents.all %}<li><a href="{% url 'tenant_document' d.pk %}" target="_blank">{{ d.title }}</a>{% if not d.visible_to_tenant %} <span class="badge text-bg-secondary">internal</span>{% endif %} <span class="text-muted">{{ d.uploaded_at|date:"d M Y" }}</span></li>
+        {% empty %}<li class="text-muted">None</li>{% endfor %}
+      </ul>
+      {% if nav.can_manage %}
+      <form method="post" enctype="multipart/form-data" action="{% url 'tenants:document_upload' tenant.pk %}" class="d-flex flex-column gap-2">
+        {% csrf_token %}{{ doc_form.title }}{{ doc_form.file }}<div class="form-check small">{{ doc_form.visible_to_tenant }} <label class="form-check-label" for="{{ doc_form.visible_to_tenant.id_for_label }}">Visible to tenant</label></div><button class="btn btn-sm btn-outline-primary">Upload</button>
+      </form>
+      {% endif %}
+    </div></div>
+  </div>
+  <div class="col-lg-8">
+    <div class="card mb-3"><div class="card-body">
+      <h2 class="h6">Leases</h2>
+      <table class="table table-sm small mb-0">
+        {% for l in leases %}<tr><td><a href="{% url 'tenants:lease_detail' l.pk %}">{{ l.unit.number }} · {{ l.unit.building.property.name }}</a></td><td>{{ l.start_date|date:"d M Y" }} → {{ l.end_date|date:"d M Y" }}</td><td>{{ l.monthly_rent|money }}</td><td>{% badge l.status l.get_status_display %}</td></tr>
+        {% empty %}<tr><td class="text-muted">No leases.</td></tr>{% endfor %}
+      </table>
+    </div></div>
+    <div class="card"><div class="card-body">
+      <h2 class="h6">Payment history</h2>
+      <table class="table table-sm small mb-0">
+        {% for p in payments %}<tr><td>{{ p.created_at|date:"d M Y" }}</td><td><a href="{% url 'billing:invoice_detail' p.invoice.pk %}">{{ p.invoice.number }}</a></td><td>{{ p.get_method_display }}</td><td class="text-end">{{ p.amount|money }}</td><td><a href="{% url 'billing:payment_detail' p.pk %}">{% badge p.status p.get_status_display %}</a></td></tr>
+        {% empty %}<tr><td class="text-muted">No payments.</td></tr>{% endfor %}
+      </table>
+    </div></div>
+  </div>
+</div>
+{% endblock %}

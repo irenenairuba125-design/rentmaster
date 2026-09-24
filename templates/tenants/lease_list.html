@@ -1,0 +1,22 @@
+{% extends "base.html" %}{% load rm %}
+{% block heading %}Leases{% endblock %}
+{% block content %}
+<div class="d-flex gap-2 mb-3">
+  <div class="btn-group btn-group-sm">
+    {% for v, l in statuses %}<a class="btn {% if v == status %}btn-primary{% else %}btn-light{% endif %}" href="?status={{ v }}">{{ l }}</a>{% endfor %}
+    <a class="btn {% if not status %}btn-primary{% else %}btn-light{% endif %}" href="?status=">All</a>
+  </div>
+  {% if nav.can_manage %}<a class="btn btn-sm btn-primary ms-auto" href="{% url 'tenants:lease_create' %}"><i class="bi bi-plus"></i> New lease</a>{% endif %}
+</div>
+<div class="card"><div class="card-body p-0">
+  <table class="table table-hover mb-0">
+    <thead><tr><th>Tenant</th><th>Unit</th><th>Period</th><th class="text-end">Rent</th><th>Frequency</th><th>Expires</th><th>Status</th></tr></thead>
+    {% for l in leases %}
+      <tr><td><a href="{% url 'tenants:lease_detail' l.pk %}">{{ l.tenant.full_name }}</a></td><td>{{ l.unit.number }} · {{ l.unit.building.property.name }}</td>
+        <td>{{ l.start_date|date:"d M Y" }} → {{ l.end_date|date:"d M Y" }}</td><td class="text-end">{{ l.monthly_rent|money }}</td><td>{{ l.get_payment_frequency_display }}</td>
+        <td>{% if l.status == "ACTIVE" %}{% if l.days_to_expiry <= 30 %}<span class="text-danger">{{ l.days_to_expiry }} days</span>{% else %}{{ l.days_to_expiry }} days{% endif %}{% endif %}</td>
+        <td>{% badge l.status l.get_status_display %}</td></tr>
+    {% empty %}<tr><td colspan="7" class="text-muted p-3">No leases.</td></tr>{% endfor %}
+  </table>
+</div></div>
+{% endblock %}

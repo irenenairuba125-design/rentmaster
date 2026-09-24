@@ -1,0 +1,21 @@
+{% extends "base.html" %}{% load rm %}
+{% block heading %}Properties{% endblock %}
+{% block content %}
+{% if nav.can_manage %}<a href="{% url 'properties:create' %}" class="btn btn-primary btn-sm mb-3"><i class="bi bi-plus"></i> New property</a>{% endif %}
+<div class="row g-3">
+  {% for p in properties %}
+  <div class="col-md-6 col-xl-4">
+    <div class="card h-100">
+      {% if p.photo %}<img src="{{ p.photo.url }}" class="card-img-top" style="height:160px;object-fit:cover" alt="">{% endif %}
+      <div class="card-body">
+        <div class="d-flex justify-content-between"><h2 class="h6 mb-0"><a href="{% url 'properties:detail' p.pk %}">{{ p.name }}</a></h2>{% badge p.status p.get_status_display %}</div>
+        <div class="small text-muted mb-2">{{ p.code }} · {{ p.get_property_type_display }} · {{ p.location }}</div>
+        <div class="small">Owner: {{ p.owner }}</div>
+        <div class="small">Units: {{ p.unit_count }} · Occupied: {{ p.occupied }}</div>
+        {% if p.unit_count %}<div class="progress mt-2" style="height:6px"><div class="progress-bar bg-success" style="width: {% widthratio p.occupied p.unit_count 100 %}%"></div></div>{% endif %}
+      </div>
+    </div>
+  </div>
+  {% empty %}<p class="text-muted">No properties yet.</p>{% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,32 @@
+{% extends "base.html" %}{% load rm %}
+{% block heading %}Receipt {{ receipt.number }}{% endblock %}
+{% block content %}
+<div class="card mx-auto" style="max-width: 560px"><div class="card-body p-4">
+  <div class="text-center mb-3">
+    <div class="fw-bold" style="letter-spacing:.1em">{{ COMPANY_NAME }}</div>
+    <div class="small text-muted">{{ payment.invoice.lease.unit.building.property.name }}</div>
+    <div class="h5 mt-2 mb-0">PAYMENT RECEIPT</div>
+  </div>
+  <table class="table table-sm">
+    <tr><td class="text-muted">Receipt No</td><td class="text-end fw-semibold">{{ receipt.number }}</td></tr>
+    <tr><td class="text-muted">Tenant</td><td class="text-end">{{ payment.invoice.lease.tenant.full_name }}</td></tr>
+    <tr><td class="text-muted">Unit</td><td class="text-end">{{ payment.invoice.lease.unit.number }}</td></tr>
+    <tr><td class="text-muted">Invoice</td><td class="text-end">{{ payment.invoice.number }}</td></tr>
+    <tr><td class="text-muted">Amount</td><td class="text-end fw-bold">{{ payment.amount|money }}</td></tr>
+    <tr><td class="text-muted">Payment method</td><td class="text-end">{{ payment.get_method_display }}</td></tr>
+    <tr><td class="text-muted">Transaction reference</td><td class="text-end">{{ payment.provider_reference|default:payment.payer_reference|default:"—" }}</td></tr>
+    <tr><td class="text-muted">Date</td><td class="text-end">{{ payment.verified_at|date:"j F Y" }}</td></tr>
+    <tr><td class="text-muted">Invoice balance</td><td class="text-end">{{ payment.invoice.balance|money }}</td></tr>
+  </table>
+  <div class="d-flex justify-content-between align-items-center">
+    <div class="text-success fw-bold"><i class="bi bi-patch-check-fill"></i> PAYMENT VERIFIED</div>
+    <div id="qr" title="Scan to verify this receipt"></div>
+  </div>
+  <div class="small text-muted mt-2 text-break">Verify at: {{ verify_url }}</div>
+  <button class="btn btn-light mt-3 no-print" onclick="window.print()"><i class="bi bi-printer"></i> Print / save as PDF</button>
+</div></div>
+{% endblock %}
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>new QRCode(document.getElementById("qr"), { text: "{{ verify_url|escapejs }}", width: 96, height: 96 });</script>
+{% endblock %}

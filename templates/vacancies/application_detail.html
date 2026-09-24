@@ -1,0 +1,48 @@
+{% extends "base.html" %}{% load rm %}
+{% block heading %}Application {{ app.reference }}{% endblock %}
+{% block content %}
+<div class="row g-3">
+  <div class="col-lg-7"><div class="card"><div class="card-body">
+    <div class="d-flex justify-content-between"><h2 class="h5">{{ app.full_name }}</h2>{% badge app.status app.get_status_display %}</div>
+    <div class="small text-muted mb-3">Applied {{ app.created_at|date:"d M Y H:i" }} for unit {{ app.listing.unit.number }} · {{ app.listing.unit.building.property.name }} ({{ app.listing.monthly_rent|money }}/month)</div>
+    <dl class="row small">
+      <dt class="col-5">Phone</dt><dd class="col-7">{{ app.phone }}</dd>
+      <dt class="col-5">Email</dt><dd class="col-7">{{ app.email|default:"—" }}</dd>
+      <dt class="col-5">ID / Passport</dt><dd class="col-7">{{ app.national_id|default:"—" }}</dd>
+      <dt class="col-5">Occupation / employer</dt><dd class="col-7">{{ app.occupation|default:"—" }}{% if app.employer %} · {{ app.employer }}{% endif %}</dd>
+      <dt class="col-5">Monthly income</dt><dd class="col-7">{% if app.monthly_income %}{{ app.monthly_income|money }}{% if app.rent_to_income %} · rent is <strong class="{% if app.rent_to_income > 40 %}text-danger{% else %}text-success{% endif %}">{{ app.rent_to_income }}%</strong> of income{% endif %}{% else %}—{% endif %}</dd>
+      <dt class="col-5">Household size</dt><dd class="col-7">{{ app.household_size }}</dd>
+      <dt class="col-5">Preferred move-in</dt><dd class="col-7">{{ app.preferred_move_in|date:"d M Y"|default:"—" }}</dd>
+      {% if app.viewing_at %}<dt class="col-5">Viewing</dt><dd class="col-7">{{ app.viewing_at|date:"d M Y H:i" }}</dd>{% endif %}
+      {% if app.reviewed_by %}<dt class="col-5">Reviewed by</dt><dd class="col-7">{{ app.reviewed_by }}</dd>{% endif %}
+    </dl>
+    {% if app.message %}<div class="small border-start border-3 ps-3 mb-3">{{ app.message|linebreaksbr }}</div>{% endif %}
+    {% if app.screening_notes %}<div class="small"><strong>Screening notes:</strong><br>{{ app.screening_notes|linebreaksbr }}</div>{% endif %}
+    {% if app.tenant %}<a class="btn btn-sm btn-outline-primary mt-3" href="{% url 'tenants:detail' app.tenant.pk %}">Tenant {{ app.tenant.tenant_id }}</a>{% endif %}
+  </div></div></div>
+  {% if can_manage %}
+  <div class="col-lg-5">
+    <div class="card mb-3"><div class="card-body">
+      <h2 class="h6">Review</h2>
+      <form method="post">{% csrf_token %}
+        {% for field in form %}
+          <div class="mb-2"><label class="form-label small fw-semibold" for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}
+            {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+            {% for e in field.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}</div>
+        {% endfor %}
+        <button class="btn btn-sm btn-primary">Save</button>
+      </form>
+      <p class="small text-muted mt-2 mb-0">Scheduling a viewing or rejecting sends the applicant an SMS.</p>
+    </div></div>
+    {% if app.status != "REJECTED" %}
+    <div class="card border-success"><div class="card-body">
+      <h2 class="h6">Approve</h2>
+      <p class="small text-muted">Creates a tenant record, reserves the unit, hides the listing and opens the lease form.</p>
+      <form method="post" action="{% url 'vacancies:application_approve' app.pk %}" onsubmit="return confirm('Approve this applicant?')">{% csrf_token %}
+        <button class="btn btn-success btn-sm">Approve &amp; create lease</button></form>
+    </div></div>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

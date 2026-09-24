@@ -1,0 +1,48 @@
+{% extends "base.html" %}{% load rm %}
+{% block heading %}Pay rent · {{ invoice.number }}{% endblock %}
+{% block content %}
+<div class="card" style="max-width: 560px"><div class="card-body p-4">
+  <div class="d-flex justify-content-between mb-3">
+    <div><div class="small text-muted">Unit {{ invoice.lease.unit.number }}</div><div class="fw-semibold">{{ invoice.period_start|date:"F Y" }}</div></div>
+    <div class="text-end"><div class="small text-muted">Outstanding</div><div class="h4 mb-0 text-danger">{{ invoice.balance|money }}</div></div>
+  </div>
+  <form method="post" novalidate>
+    {% csrf_token %}
+    {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors|join:" " }}</div>{% endif %}
+    <label class="form-label small fw-semibold">Payment method</label>
+    <div class="mb-3">
+      {% for radio in form.method %}
+        <div class="form-check">{{ radio.tag }} <label class="form-check-label" for="{{ radio.id_for_label }}">{{ radio.choice_label }}</label></div>
+      {% endfor %}
+      {% for e in form.method.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+    </div>
+    <div class="mb-3">
+      <label class="form-label small fw-semibold" for="{{ form.amount.id_for_label }}">Amount ({{ CURRENCY }})</label>{{ form.amount }}
+      {% for e in form.amount.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+    </div>
+    <div class="mb-3" id="phone-row">
+      <label class="form-label small fw-semibold" for="{{ form.phone.id_for_label }}">Mobile money number</label>{{ form.phone }}
+      <div class="form-text">{{ form.phone.help_text }}. You'll get a prompt on your phone to enter your PIN.</div>
+      {% for e in form.phone.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+    </div>
+    <div class="mb-3 d-none" id="bank-row">
+      <label class="form-label small fw-semibold" for="{{ form.bank_reference.id_for_label }}">Bank reference</label>{{ form.bank_reference }}
+      <div class="form-text">Your payment will show as pending until the accounts office matches it on the bank statement.</div>
+      {% for e in form.bank_reference.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+    </div>
+    <button class="btn btn-success w-100"><i class="bi bi-lock"></i> Continue</button>
+  </form>
+</div></div>
+{% endblock %}
+{% block scripts %}
+<script>
+  function sync() {
+    const m = document.querySelector('input[name="method"]:checked');
+    const bank = m && m.value === "BANK";
+    document.getElementById("phone-row").classList.toggle("d-none", bank);
+    document.getElementById("bank-row").classList.toggle("d-none", !bank);
+  }
+  document.querySelectorAll('input[name="method"]').forEach(r => r.addEventListener("change", sync));
+  sync();
+</script>
+{% endblock %}

@@ -1,0 +1,37 @@
+{% extends "base.html" %}{% load rm %}
+{% block heading %}Utility meter readings{% endblock %}
+{% block content %}
+<div class="row g-3">
+  <div class="col-lg-4"><div class="card"><div class="card-body">
+    <h2 class="h6">Record a reading</h2>
+    <p class="small text-muted">Unbilled readings are added automatically to the unit's next invoice.</p>
+    {% include "partials/form_fields.html" with submit_label="Save reading" action=request.path %}
+  </div></div></div>
+  <div class="col-lg-8"><div class="card"><div class="card-body p-0">
+    <table class="table table-sm table-hover mb-0 small">
+      <thead><tr><th>Date</th><th>Unit</th><th>Utility</th><th>Meter</th><th class="text-end">Prev</th><th class="text-end">Current</th><th class="text-end">Used</th><th class="text-end">Amount</th><th>Billed</th></tr></thead>
+      {% for r in readings %}
+        <tr><td>{{ r.reading_date|date:"d M Y" }}</td><td>{{ r.unit.number }} · {{ r.unit.building.property.code }}</td><td>{{ r.get_utility_display }}</td><td>{{ r.meter_number }}</td>
+          <td class="text-end">{{ r.previous_reading|floatformat:"-2" }}</td><td class="text-end">{{ r.current_reading|floatformat:"-2" }}</td><td class="text-end">{{ r.consumption|floatformat:"-2" }}</td>
+          <td class="text-end">{{ r.amount|num }}</td>
+          <td>{% if r.is_billed %}<a href="{% url 'billing:invoice_detail' r.invoice_item.invoice.pk %}">{{ r.invoice_item.invoice.number }}</a>{% else %}<span class="text-warning">pending</span>{% endif %}</td></tr>
+      {% empty %}<tr><td colspan="9" class="text-muted p-3">No readings yet.</td></tr>{% endfor %}
+    </table>
+  </div></div></div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+  const unit = document.getElementById("id_unit"), util = document.getElementById("id_utility");
+  async function prefill() {
+    if (!unit.value) return;
+    const r = await fetch(`{% url 'billing:utility_list' %}last/${unit.value}/?utility=${util.value}`);
+    if (!r.ok) return;
+    const d = await r.json();
+    document.getElementById("id_previous_reading").value = d.previous_reading;
+    if (d.rate) document.getElementById("id_rate").value = d.rate;
+    document.getElementById("id_meter_number").value = d.meter_number || "";
+  }
+  unit.addEventListener("change", prefill); util.addEventListener("change", prefill);
+</script>
+{% endblock %}

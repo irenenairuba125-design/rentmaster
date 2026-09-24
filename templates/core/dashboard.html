@@ -1,0 +1,96 @@
+{% extends "base.html" %}{% load rm %}
+{% block heading %}{% if user.role == "OWNER" %}Owner dashboard{% else %}Dashboard{% endif %} <span class="text-muted fw-normal small">· {{ month_label }}</span>{% endblock %}
+{% block content %}
+<div class="row g-3 mb-3">
+  {% with s=stats %}
+  <div class="col-6 col-lg-2"><div class="card stat h-100"><div class="card-body"><div class="label">Properties</div><div class="value">{{ s.properties }}</div></div></div></div>
+  <div class="col-6 col-lg-2"><div class="card stat h-100"><div class="card-body"><div class="label">Units</div><div class="value">{{ s.units }}</div><div class="small text-muted">{{ s.vacant }} vacant/available</div></div></div></div>
+  <div class="col-6 col-lg-2"><div class="card stat h-100"><div class="card-body"><div class="label">Tenants</div><div class="value">{{ s.tenants }}</div></div></div></div>
+  <div class="col-6 col-lg-2"><div class="card stat h-100"><div class="card-body"><div class="label">Occupancy</div><div class="value">{{ s.occupancy }}%</div>
+    <div class="progress mt-1" style="height:5px"><div class="progress-bar bg-success" style="width: {{ s.occupancy }}%"></div></div></div></div></div>
+  <div class="col-6 col-lg-2"><div class="card stat h-100"><div class="card-body"><div class="label">Collected</div><div class="value text-success" style="font-size:1.25rem">{{ s.collected|money }}</div></div></div></div>
+  <div class="col-6 col-lg-2"><div class="card stat h-100"><div class="card-body"><div class="label">Arrears</div><div class="value text-danger" style="font-size:1.25rem">{{ s.arrears|money }}</div><a class="small" href="{% url 'billing:arrears' %}">View</a></div></div></div>
+  {% endwith %}
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-lg-8">
+    <div class="card h-100"><div class="card-body">
+      <h2 class="h6">Billing, collections &amp; expenses — last 6 months</h2>
+      <canvas id="trend" height="120"></canvas>
+    </div></div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card h-100"><div class="card-body">
+      <h2 class="h6">This month</h2>
+      <table class="table table-sm mb-0">
+        <tr><td>Income collected</td><td class="text-end">{{ stats.collected|money }}</td></tr>
+        <tr><td>Expenses</td><td class="text-end">{{ stats.expenses|money }}</td></tr>
+        <tr class="fw-bold"><td>Net income</td><td class="text-end {% if stats.net < 0 %}text-danger{% else %}text-success{% endif %}">{{ stats.net|money }}</td></tr>
+      </table>
+      {% if pending_payments %}
+      <div class="alert alert-warning mt-3 mb-0 py-2 small"><i class="bi bi-hourglass-split"></i>
+        <a href="{% url 'billing:payment_list' %}?status=PENDING">{{ pending_payments }} payment{{ pending_payments|pluralize }} awaiting verification</a></div>
+      {% endif %}
+      <div class="d-grid gap-2 mt-3">
+        {% if nav.can_manage %}<a class="btn btn-sm btn-outline-primary" href="{% url 'tenants:lease_create' %}"><i class="bi bi-plus"></i> New lease</a>{% endif %}
+        {% if nav.is_finance %}<a class="btn btn-sm btn-outline-primary" href="{% url 'billing:invoice_list' %}"><i class="bi bi-receipt"></i> Generate invoices</a>{% endif %}
+      </div>
+    </div></div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-4">
+    <div class="card h-100"><div class="card-body">
+      <h2 class="h6">Leases expiring soon</h2>
+      <ul class="list-group list-group-flush small">
+        {% for l in expiring %}
+          <li class="list-group-item px-0 d-flex justify-content-between"><a href="{% url 'tenants:lease_detail' l.pk %}">{{ l.unit.number }} · {{ l.tenant.full_name }}</a>
+            <span class="{% if l.days_to_expiry < 0 %}text-danger{% else %}text-warning{% endif %}">{% if l.days_to_expiry < 0 %}ended{% else %}{{ l.days_to_expiry }} days{% endif %}</span></li>
+        {% empty %}<li class="list-group-item px-0 text-muted">None in the next 30 days.</li>{% endfor %}
+      </ul>
+    </div></div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card h-100"><div class="card-body">
+      <h2 class="h6">Recent payments</h2>
+      <ul class="list-group list-group-flush small">
+        {% for pmt in recent_payments %}
+          <li class="list-group-item px-0 d-flex justify-content-between"><a href="{% url 'billing:payment_detail' pmt.pk %}">{{ pmt.invoice.lease.unit.number }} · {{ pmt.invoice.lease.tenant.full_name }}</a><span>{{ pmt.amount|money }}</span></li>
+        {% empty %}<li class="list-group-item px-0 text-muted">No payments yet.</li>{% endfor %}
+      </ul>
+    </div></div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card h-100"><div class="card-body">
+      <h2 class="h6">Open maintenance</h2>
+      <ul class="list-group list-group-flush small">
+        {% for r in open_maintenance %}
+          <li class="list-group-item px-0 d-flex justify-content-between"><a href="{% url 'maintenance:detail' r.pk %}">{{ r.ticket }} · {{ r.unit.number }} · {{ r.title|truncatechars:24 }}</a>{% badge r.priority r.get_priority_display %}</li>
+        {% empty %}<li class="list-group-item px-0 text-muted">No open requests.</li>{% endfor %}
+      </ul>
+    </div></div>
+  </div>
+</div>
+{{ trend|json_script:"trend-data" }}
+{% endblock %}
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script>
+  const t = JSON.parse(document.getElementById("trend-data").textContent);
+  new Chart(document.getElementById("trend"), {
+    type: "bar",
+    data: {
+      labels: t.map(r => r.label),
+      datasets: [
+        { label: "Billed", data: t.map(r => r.billed), backgroundColor: "#b8c7d9" },
+        { label: "Collected", data: t.map(r => r.collected), backgroundColor: "#18a0a0" },
+        { label: "Expenses", data: t.map(r => r.expenses), backgroundColor: "#e0795b" },
+      ],
+    },
+    options: { plugins: { legend: { position: "bottom" } },
+               scales: { y: { ticks: { callback: v => v >= 1e6 ? (v / 1e6) + "M" : v >= 1e3 ? (v / 1e3) + "K" : v } } } },
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,18 @@
+{% extends "public_base.html" %}{% load rm %}
+{% block content %}
+<h1 class="h4 mb-3">Available rentals</h1>
+<div class="row g-3">
+  {% for l in listings %}
+  <div class="col-md-6 col-lg-4"><div class="card h-100">
+    {% if l.unit.photo %}<img src="{{ l.unit.photo.url }}" class="card-img-top" style="height:180px;object-fit:cover" alt="">{% elif l.unit.building.property.photo %}<img src="{{ l.unit.building.property.photo.url }}" class="card-img-top" style="height:180px;object-fit:cover" alt="">{% endif %}
+    <div class="card-body d-flex flex-column">
+      <h2 class="h6">{{ l.title }}</h2>
+      <div class="small text-muted mb-2"><i class="bi bi-geo-alt"></i> {{ l.unit.building.property.location }} · {{ l.unit.get_unit_type_display }}</div>
+      <div class="fw-bold mb-2">{{ l.monthly_rent|money }} <span class="small fw-normal text-muted">/ month</span></div>
+      <div class="small mb-3">Available from {{ l.available_from|date:"d M Y" }}</div>
+      <a href="{% url 'vacancies:public_detail' l.pk %}" class="btn btn-primary btn-sm mt-auto">View &amp; apply</a>
+    </div>
+  </div></div>
+  {% empty %}<p class="text-muted">No vacancies right now. Please check again soon.</p>{% endfor %}
+</div>
+{% endblock %}

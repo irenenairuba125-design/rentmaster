@@ -1,0 +1,7 @@
+{% extends "base.html" %}{% load rm %}
+{% block title %}Receipt verification{% endblock %}
+{% block heading %}Receipt verification{% endblock %}
+{% block content %}{% include "billing/_receipt_verify_body.html" %}{% endblock %}
+{% block public %}
+<div class="min-vh-100 d-flex align-items-center justify-content-center p-3">{% include "billing/_receipt_verify_body.html" %}</div>
+{% endblock %}

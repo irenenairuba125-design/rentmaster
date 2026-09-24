@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Verification code{% endblock %}
+{% block public %}
+<div class="min-vh-100 d-flex align-items-center justify-content-center" style="background: linear-gradient(135deg, #0f2440, #18a0a0);">
+  <div class="card p-4" style="width: 380px">
+    <h1 class="h5 fw-bold">Two-step verification</h1>
+    <p class="small text-muted">Enter the 6-digit code from your authenticator app.</p>
+    {% for message in messages %}<div class="alert alert-danger py-2 small">{{ message }}</div>{% endfor %}
+    {% if error %}<div class="alert alert-danger py-2 small">{{ error }}</div>{% endif %}
+    <form method="post">{% csrf_token %}
+      <input name="code" class="form-control form-control-lg text-center mb-3" inputmode="numeric" autocomplete="one-time-code" maxlength="7" autofocus required placeholder="123456">
+      <button class="btn btn-primary w-100">Verify</button>
+    </form>
+    <a class="small mt-3" href="{% url 'login' %}">Back to sign in</a>
+  </div>
+</div>
+{% endblock %}

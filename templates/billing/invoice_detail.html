@@ -1,0 +1,64 @@
+{% extends "base.html" %}{% load rm %}
+{% block heading %}Invoice {{ invoice.number }}{% endblock %}
+{% block content %}
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="card"><div class="card-body p-4">
+      <div class="d-flex justify-content-between">
+        <div><div class="fw-bold" style="letter-spacing:.08em">{{ COMPANY_NAME }}</div><div class="small text-muted">{{ invoice.lease.unit.building.property.name }}</div></div>
+        <div class="text-end"><div class="h5 mb-0">INVOICE #{{ invoice.number }}</div>{% badge invoice.status invoice.get_status_display %}{% if invoice.is_overdue %} <span class="badge text-bg-danger">{{ invoice.days_overdue }} days overdue</span>{% endif %}</div>
+      </div>
+      <hr>
+      <div class="row small mb-3">
+        <div class="col-6">
+          <div><span class="text-muted">Tenant:</span> {{ invoice.lease.tenant.full_name }}</div>
+          <div><span class="text-muted">Unit:</span> {{ invoice.lease.unit.number }}</div>
+        </div>
+        <div class="col-6 text-end">
+          <div><span class="text-muted">Period:</span> {{ invoice.period_start|date:"d M Y" }} – {{ invoice.period_end|date:"d M Y" }}</div>
+          <div><span class="text-muted">Issued:</span> {{ invoice.issue_date|date:"d M Y" }} · <span class="text-muted">Due:</span> {{ invoice.due_date|date:"d M Y" }}</div>
+        </div>
+      </div>
+      <table class="table table-sm">
+        {% for item in items %}<tr><td>{{ item.description }}</td><td class="text-end text-nowrap">{{ item.amount|money }}</td></tr>{% endfor %}
+        <tr class="fw-bold border-top border-dark"><td>TOTAL</td><td class="text-end">{{ invoice.total|money }}</td></tr>
+        <tr><td>Paid</td><td class="text-end">{{ invoice.amount_paid|money }}</td></tr>
+        <tr class="fw-bold"><td>Balance</td><td class="text-end {% if invoice.balance %}text-danger{% endif %}">{{ invoice.balance|money }}</td></tr>
+      </table>
+      <div class="d-flex gap-2 no-print">
+        {% if can_pay %}<a class="btn btn-success" href="{% url 'billing:invoice_pay' invoice.pk %}"><i class="bi bi-phone"></i> Pay now</a>{% endif %}
+        <button class="btn btn-light" onclick="window.print()"><i class="bi bi-printer"></i> Print / PDF</button>
+        {% if can_cancel %}<form method="post" action="{% url 'billing:invoice_cancel' invoice.pk %}" onsubmit="return confirm('Cancel this invoice?')">{% csrf_token %}<button class="btn btn-outline-danger">Cancel invoice</button></form>{% endif %}
+      </div>
+    </div></div>
+
+    <div class="card mt-3"><div class="card-body">
+      <h2 class="h6">Payments</h2>
+      <table class="table table-sm small mb-0">
+        {% for p in payments %}<tr><td>{{ p.created_at|date:"d M Y H:i" }}</td><td>{{ p.get_method_display }}</td><td class="text-end">{{ p.amount|money }}</td>
+          <td><a href="{% url 'billing:payment_detail' p.pk %}">{% badge p.status p.get_status_display %}</a></td>
+          <td>{% if p.receipt %}<a href="{% url 'billing:receipt_detail' p.receipt.pk %}">{{ p.receipt.number }}</a>{% endif %}</td></tr>
+        {% empty %}<tr><td class="text-muted">No payments yet.</td></tr>{% endfor %}
+      </table>
+    </div></div>
+  </div>
+
+  <div class="col-lg-5 no-print">
+    {% if payment_form %}
+    <div class="card mb-3"><div class="card-body">
+      <h2 class="h6">Record a confirmed payment</h2>
+      <p class="small text-muted">Use only after the money has been received (cash counted, or seen on the bank / mobile-money statement). A receipt is issued immediately.</p>
+      {% url 'billing:payment_record' invoice.pk as record_url %}
+      {% include "partials/form_fields.html" with form=payment_form action=record_url submit_label="Record payment" wide_fields="confirmed" %}
+    </div></div>
+    {% endif %}
+    {% if item_form %}
+    <div class="card"><div class="card-body">
+      <h2 class="h6">Add a charge</h2>
+      {% url 'billing:invoice_item_add' invoice.pk as item_url %}
+      {% include "partials/form_fields.html" with form=item_form action=item_url submit_label="Add charge" %}
+    </div></div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

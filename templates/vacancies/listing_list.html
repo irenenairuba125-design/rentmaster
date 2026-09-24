@@ -1,0 +1,28 @@
+{% extends "base.html" %}{% load rm %}
+{% block heading %}Vacancies{% endblock %}
+{% block content %}
+<div class="d-flex gap-2 mb-3">
+  <a class="btn btn-sm btn-light" href="{% url 'vacancies:public_list' %}" target="_blank"><i class="bi bi-box-arrow-up-right"></i> Public vacancies page</a>
+  <a class="btn btn-sm btn-light" href="{% url 'vacancies:application_list' %}"><i class="bi bi-person-lines-fill"></i> Applications</a>
+  {% if can_manage %}<a class="btn btn-sm btn-primary ms-auto" href="{% url 'vacancies:listing_create' %}"><i class="bi bi-megaphone"></i> Publish vacancy</a>{% endif %}
+</div>
+{% if unlisted_vacant %}
+<div class="alert alert-warning small">
+  <strong>{{ unlisted_vacant|length }} vacant unit{{ unlisted_vacant|pluralize }} not advertised:</strong>
+  {% for u in unlisted_vacant %}{% if can_manage %}<a href="{% url 'vacancies:listing_create' %}?unit={{ u.pk }}">{{ u.number }} ({{ u.building.property.code }})</a>{% else %}{{ u.number }}{% endif %}{% if not forloop.last %}, {% endif %}{% endfor %}
+</div>
+{% endif %}
+<div class="card"><div class="card-body p-0">
+  <table class="table table-hover mb-0">
+    <thead><tr><th>Listing</th><th>Unit</th><th class="text-end">Rent</th><th>Available</th><th>Open applications</th><th>Status</th><th></th></tr></thead>
+    {% for l in listings %}
+      <tr><td>{% if l.is_published %}<a href="{% url 'vacancies:public_detail' l.pk %}" target="_blank">{{ l.title }}</a>{% else %}{{ l.title }}{% endif %}</td>
+        <td>{{ l.unit.number }} · {{ l.unit.building.property.name }} {% badge l.unit.status l.unit.get_status_display %}</td>
+        <td class="text-end">{{ l.monthly_rent|num }}</td><td>{{ l.available_from|date:"d M Y" }}</td>
+        <td>{% if l.open_apps %}<a href="{% url 'vacancies:application_list' %}">{{ l.open_apps }}</a>{% else %}0{% endif %}</td>
+        <td>{% if l.is_published %}{% badge "PUBLISHED" "Published" %}{% else %}{% badge "DRAFT" "Hidden" %}{% endif %}</td>
+        <td class="text-end">{% if can_manage %}<a class="btn btn-sm btn-light py-0" href="{% url 'vacancies:listing_edit' l.pk %}">Edit</a>{% endif %}</td></tr>
+    {% empty %}<tr><td colspan="7" class="text-muted p-3">No listings.</td></tr>{% endfor %}
+  </table>
+</div></div>
+{% endblock %}

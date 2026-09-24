@@ -1,0 +1,41 @@
+{% extends "base.html" %}{% load rm %}
+{% block heading %}Financial report <span class="text-muted small fw-normal">{{ start|date:"d M Y" }} – {{ end|date:"d M Y" }}</span>{% endblock %}
+{% block content %}
+<form class="row g-2 mb-3 no-print" method="get">
+  <div class="col-auto">{{ form.start }}</div><div class="col-auto">{{ form.end }}</div><div class="col-auto">{{ form.property }}</div>
+  <div class="col-auto"><button class="btn btn-sm btn-primary">Run</button></div>
+  <div class="col-auto ms-auto"><button type="submit" name="format" value="csv" class="btn btn-sm btn-outline-secondary"><i class="bi bi-download"></i> CSV</button>
+    <button type="button" class="btn btn-sm btn-light" onclick="window.print()"><i class="bi bi-printer"></i> Print</button></div>
+</form>
+
+<div class="row g-3 mb-3">
+  <div class="col-md-3"><div class="card stat"><div class="card-body"><div class="label">Billed</div><div class="value" style="font-size:1.3rem">{{ totals.billed|money }}</div></div></div></div>
+  <div class="col-md-3"><div class="card stat"><div class="card-body"><div class="label">Collected</div><div class="value text-success" style="font-size:1.3rem">{{ totals.income|money }}</div></div></div></div>
+  <div class="col-md-3"><div class="card stat"><div class="card-body"><div class="label">Expenses</div><div class="value text-danger" style="font-size:1.3rem">{{ totals.expenses|money }}</div></div></div></div>
+  <div class="col-md-3"><div class="card stat"><div class="card-body"><div class="label">Net income</div><div class="value" style="font-size:1.3rem">{{ totals.net|money }}</div></div></div></div>
+</div>
+
+{% for r in rows %}
+<div class="card mb-3"><div class="card-body">
+  <div class="d-flex justify-content-between"><h2 class="h6">{{ r.property.name }}</h2>
+    <div class="small text-muted">Occupancy {{ r.occupancy }}% ({{ r.occupied }}/{{ r.units }}){% if r.collection_rate is not None %} · Collection rate {{ r.collection_rate }}%{% endif %}</div></div>
+  <div class="row">
+    <div class="col-md-6">
+      <table class="table table-sm small">
+        <tr><td>PROPERTY INCOME (collected)</td><td class="text-end fw-semibold">{{ r.income|money }}</td></tr>
+        <tr><td class="text-muted">Billed in period</td><td class="text-end text-muted">{{ r.billed|money }}</td></tr>
+        <tr><td>Total expenses</td><td class="text-end">{{ r.expenses|money }}</td></tr>
+        <tr class="fw-bold border-top border-dark"><td>NET INCOME</td><td class="text-end {% if r.net < 0 %}text-danger{% endif %}">{{ r.net|money }}</td></tr>
+      </table>
+    </div>
+    <div class="col-md-6">
+      <table class="table table-sm small">
+        <tr><th colspan="2">Expenses by category</th></tr>
+        {% for c in r.by_category %}<tr><td>{{ c.label }}</td><td class="text-end">{{ c.total|num }}</td></tr>
+        {% empty %}<tr><td class="text-muted">No expenses</td></tr>{% endfor %}
+      </table>
+    </div>
+  </div>
+</div></div>
+{% empty %}<p class="text-muted">No properties.</p>{% endfor %}
+{% endblock %}

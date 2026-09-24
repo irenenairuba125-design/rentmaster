@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block heading %}Notifications{% endblock %}
+{% block content %}
+<div class="card"><div class="list-group list-group-flush">
+  {% for n in notes %}
+    <div class="list-group-item {% if not n.is_read %}bg-light{% endif %}">
+      <div class="d-flex justify-content-between">
+        <strong>{{ n.title }}</strong><small class="text-muted">{{ n.created_at|timesince }} ago</small>
+      </div>
+      <div class="small">{{ n.message }}</div>
+      {% if n.link %}<form method="post" action="{% url 'notification_open' n.pk %}">{% csrf_token %}<button class="btn btn-link btn-sm p-0">Open</button></form>{% endif %}
+    </div>
+  {% empty %}<div class="list-group-item text-muted">No notifications.</div>{% endfor %}
+</div></div>
+{% endblock %}

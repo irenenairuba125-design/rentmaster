@@ -1,0 +1,46 @@
+{% extends "base.html" %}{% load rm %}
+{% block heading %}Unit {{ unit.number }} <span class="text-muted small">{{ unit.building }}</span>{% endblock %}
+{% block content %}
+<div class="row g-3">
+  <div class="col-lg-4"><div class="card"><div class="card-body">
+    {% if unit.photo %}<img src="{{ unit.photo.url }}" class="img-fluid rounded mb-2" alt="">{% endif %}
+    <dl class="row small mb-0">
+      <dt class="col-6">Status</dt><dd class="col-6">{% badge unit.status unit.get_status_display %}</dd>
+      <dt class="col-6">Type</dt><dd class="col-6">{{ unit.get_unit_type_display }}</dd>
+      <dt class="col-6">Monthly rent</dt><dd class="col-6">{{ unit.monthly_rent|money }}</dd>
+      <dt class="col-6">Security deposit</dt><dd class="col-6">{{ unit.security_deposit|money }}</dd>
+      <dt class="col-6">Electricity meter</dt><dd class="col-6">{{ unit.electricity_meter|default:"—" }}</dd>
+      <dt class="col-6">Water meter</dt><dd class="col-6">{{ unit.water_meter|default:"—" }}</dd>
+    </dl>
+    {% if nav.can_manage %}<div class="d-flex gap-2 mt-2">
+      <a href="{% url 'properties:unit_edit' unit.pk %}" class="btn btn-sm btn-light">Edit</a>
+      {% if unit.status != "OCCUPIED" %}<a href="{% url 'tenants:lease_create' %}?unit={{ unit.pk }}" class="btn btn-sm btn-success">New lease</a>
+        <a href="{% url 'vacancies:listing_create' %}?unit={{ unit.pk }}" class="btn btn-sm btn-outline-primary">Advertise</a>{% endif %}
+      <a href="{% url 'inspections:create' %}?unit={{ unit.pk }}" class="btn btn-sm btn-outline-secondary">Inspect</a>
+    </div>{% endif %}
+  </div></div></div>
+  <div class="col-lg-8">
+    <div class="card mb-3"><div class="card-body">
+      <h2 class="h6">Lease history</h2>
+      <table class="table table-sm small mb-0">
+        {% for l in leases %}<tr><td><a href="{% url 'tenants:lease_detail' l.pk %}">{{ l.tenant.full_name }}</a></td><td>{{ l.start_date|date:"d M Y" }} → {{ l.end_date|date:"d M Y" }}</td><td>{{ l.monthly_rent|money }}</td><td>{% badge l.status l.get_status_display %}</td></tr>
+        {% empty %}<tr><td class="text-muted">No leases.</td></tr>{% endfor %}
+      </table>
+    </div></div>
+    <div class="card mb-3"><div class="card-body">
+      <h2 class="h6">Meter readings</h2>
+      <table class="table table-sm small mb-0">
+        {% for r in readings %}<tr><td>{{ r.reading_date|date:"d M Y" }}</td><td>{{ r.get_utility_display }}</td><td>{{ r.previous_reading|floatformat:"-2" }} → {{ r.current_reading|floatformat:"-2" }}</td><td>{{ r.amount|money }}</td><td>{% if r.is_billed %}billed{% else %}<span class="text-warning">unbilled</span>{% endif %}</td></tr>
+        {% empty %}<tr><td class="text-muted">No readings.</td></tr>{% endfor %}
+      </table>
+    </div></div>
+    <div class="card"><div class="card-body">
+      <h2 class="h6">Maintenance history</h2>
+      <table class="table table-sm small mb-0">
+        {% for r in maintenance %}<tr><td><a href="{% url 'maintenance:detail' r.pk %}">{{ r.ticket }}</a></td><td>{{ r.title }}</td><td>{{ r.created_at|date:"d M Y" }}</td><td>{% badge r.status r.get_status_display %}</td><td>{{ r.cost|money }}</td></tr>
+        {% empty %}<tr><td class="text-muted">No maintenance records.</td></tr>{% endfor %}
+      </table>
+    </div></div>
+  </div>
+</div>
+{% endblock %}

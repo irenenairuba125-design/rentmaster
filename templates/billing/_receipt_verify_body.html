@@ -1,0 +1,18 @@
+{% load rm %}
+<div class="card" style="max-width: 440px; width: 100%"><div class="card-body p-4 text-center">
+  <div class="fw-bold mb-3" style="letter-spacing:.1em">{{ COMPANY_NAME }}</div>
+  {% if receipt %}
+    <i class="bi bi-patch-check-fill text-success" style="font-size: 3rem"></i>
+    <div class="h5 text-success">Genuine receipt</div>
+    <table class="table table-sm text-start small mt-3">
+      <tr><td class="text-muted">Receipt No</td><td class="text-end">{{ receipt.number }}</td></tr>
+      <tr><td class="text-muted">Unit</td><td class="text-end">{{ receipt.payment.invoice.lease.unit.number }}</td></tr>
+      <tr><td class="text-muted">Amount</td><td class="text-end">{{ receipt.payment.amount|money }}</td></tr>
+      <tr><td class="text-muted">Date</td><td class="text-end">{{ receipt.payment.verified_at|date:"j F Y" }}</td></tr>
+    </table>
+  {% else %}
+    <i class="bi bi-x-octagon-fill text-danger" style="font-size: 3rem"></i>
+    <div class="h5 text-danger">Receipt not found</div>
+    <p class="small text-muted">This receipt could not be verified. It may be forged or mistyped.</p>
+  {% endif %}
+</div></div>

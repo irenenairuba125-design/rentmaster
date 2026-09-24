@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block heading %}Two-factor authentication{% endblock %}
+{% block content %}
+<div class="card" style="max-width: 560px"><div class="card-body p-4">
+  {% if enabled %}
+    <p><i class="bi bi-shield-check text-success"></i> Two-factor authentication is <strong>on</strong> for your account.</p>
+    <h2 class="h6 mt-4">Turn it off</h2>
+    <form method="post" class="row g-2">{% csrf_token %}
+      <div class="col-md-6"><input type="password" name="password" class="form-control" placeholder="Your password" required></div>
+      <div class="col-md-6"><input name="code" class="form-control" placeholder="Current 6-digit code" inputmode="numeric" required></div>
+      <div class="col-12"><button class="btn btn-outline-danger btn-sm">Turn off</button></div>
+    </form>
+  {% else %}
+    {% if request.user.role in "SUPER_ADMIN ACCOUNTANT OWNER" %}<div class="alert alert-info small">Recommended for your role: you can see or change financial records.</div>{% endif %}
+    <ol class="small">
+      <li>Install an authenticator app (Google Authenticator, Microsoft Authenticator or Authy).</li>
+      <li>Scan this QR code, or type the key in manually.</li>
+      <li>Enter the 6-digit code the app shows.</li>
+    </ol>
+    <div class="d-flex gap-4 align-items-center mb-3">
+      <div id="qr"></div>
+      <div class="small">Key:<br><code class="fs-6">{{ secret }}</code></div>
+    </div>
+    <form method="post" class="d-flex gap-2">{% csrf_token %}
+      <input name="code" class="form-control" style="max-width:180px" placeholder="123456" inputmode="numeric" autocomplete="one-time-code" required>
+      <button class="btn btn-primary">Turn on</button>
+    </form>
+  {% endif %}
+</div></div>
+{% endblock %}
+{% block scripts %}
+{% if not enabled %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>new QRCode(document.getElementById("qr"), { text: "{{ uri|escapejs }}", width: 160, height: 160 });</script>
+{% endif %}
+{% endblock %}

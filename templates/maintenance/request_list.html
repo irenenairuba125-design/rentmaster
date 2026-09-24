@@ -1,0 +1,20 @@
+{% extends "base.html" %}{% load rm %}
+{% block heading %}Maintenance requests{% endblock %}
+{% block content %}
+<div class="d-flex gap-2 mb-3">
+  <div class="btn-group btn-group-sm flex-wrap">
+    {% for v, l in statuses %}<a class="btn {% if v == status %}btn-primary{% else %}btn-light{% endif %}" href="?status={{ v }}">{{ l }}</a>{% endfor %}
+    <a class="btn {% if not status %}btn-primary{% else %}btn-light{% endif %}" href="?status=">All</a>
+  </div>
+  {% if can_create %}<a class="btn btn-sm btn-primary ms-auto" href="{% url 'maintenance:create' %}"><i class="bi bi-plus"></i> New request</a>{% endif %}
+</div>
+<div class="card"><div class="card-body p-0">
+  <table class="table table-hover mb-0">
+    <thead><tr><th>Ticket</th><th>Unit</th><th>Issue</th><th>Priority</th><th>Assigned to</th><th>Status</th><th>Reported</th></tr></thead>
+    {% for r in requests %}
+      <tr><td><a href="{% url 'maintenance:detail' r.pk %}">{{ r.ticket }}</a></td><td>{{ r.unit.number }} · {{ r.unit.building.property.name }}</td><td>{{ r.title }}</td>
+        <td>{% badge r.priority r.get_priority_display %}</td><td>{{ r.assigned_to|default:"—" }}</td><td>{% badge r.status r.get_status_display %}</td><td>{{ r.created_at|date:"d M Y" }}</td></tr>
+    {% empty %}<tr><td colspan="7" class="text-muted p-3">No requests.</td></tr>{% endfor %}
+  </table>
+</div></div>
+{% endblock %}

@@ -1,0 +1,11 @@
+{% extends "public_base.html" %}
+{% block title %}Application received{% endblock %}
+{% block content %}
+<div class="card mx-auto" style="max-width:520px"><div class="card-body p-4 text-center">
+  <i class="bi bi-check-circle-fill text-success" style="font-size:3rem"></i>
+  <h1 class="h5 mt-2">Application received</h1>
+  {% if application %}<p>Your reference is <strong>{{ application.reference }}</strong>.</p>{% endif %}
+  <p class="small text-muted">Thank you for applying for unit {{ listing.unit.number }}. The property manager will review your application and contact you to arrange a viewing.</p>
+  <a href="{% url 'vacancies:public_list' %}" class="btn btn-light btn-sm">Back to vacancies</a>
+</div></div>
+{% endblock %}

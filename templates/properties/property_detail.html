@@ -1,0 +1,41 @@
+{% extends "base.html" %}{% load rm %}
+{% block heading %}{{ property.name }} <span class="text-muted small">{{ property.code }}</span>{% endblock %}
+{% block content %}
+<div class="row g-3 mb-3">
+  <div class="col-lg-8"><div class="card h-100"><div class="card-body">
+    <div class="d-flex justify-content-between align-items-start">
+      <div>
+        <div>{{ property.get_property_type_display }} · {{ property.location }} {% badge property.status property.get_status_display %}</div>
+        <div class="small text-muted">Owner: {{ property.owner }} · Managers: {{ property.managers.all|join:", "|default:"—" }}</div>
+        {% if property.latitude %}<a class="small" target="_blank" rel="noopener" href="https://www.google.com/maps?q={{ property.latitude }},{{ property.longitude }}"><i class="bi bi-geo-alt"></i> Map</a>{% endif %}
+      </div>
+      {% if nav.can_manage %}<div class="d-flex gap-2">
+        <a class="btn btn-sm btn-light" href="{% url 'properties:edit' property.pk %}">Edit</a>
+        <a class="btn btn-sm btn-primary" href="{% url 'properties:building_create' property.pk %}"><i class="bi bi-plus"></i> Building</a>
+      </div>{% endif %}
+    </div>
+    {% if property.notes %}<p class="small mt-2 mb-0">{{ property.notes|linebreaksbr }}</p>{% endif %}
+  </div></div></div>
+  <div class="col-lg-4"><div class="card stat h-100"><div class="card-body">
+    <div class="label">Occupancy</div><div class="value">{{ property.occupancy_rate }}%</div>
+  </div></div></div>
+</div>
+
+{% for b in buildings %}
+<div class="card mb-3"><div class="card-body">
+  <div class="d-flex justify-content-between mb-2">
+    <h2 class="h6 mb-0"><i class="bi bi-building"></i> {{ b.name }} <span class="text-muted small">· {{ b.floors }} floor{{ b.floors|pluralize }}</span></h2>
+    {% if nav.can_manage %}<a class="btn btn-sm btn-outline-primary" href="{% url 'properties:unit_create' b.pk %}"><i class="bi bi-plus"></i> Unit</a>{% endif %}
+  </div>
+  <table class="table table-sm table-hover mb-0">
+    <thead><tr><th>Unit</th><th>Type</th><th class="text-end">Rent</th><th>Status</th><th>Tenant</th><th></th></tr></thead>
+    {% for u in b.units.all %}
+      <tr><td><a href="{% url 'properties:unit_detail' u.pk %}">{{ u.number }}</a></td><td>{{ u.get_unit_type_display }}</td><td class="text-end">{{ u.monthly_rent|money }}</td>
+        <td>{% badge u.status u.get_status_display %}</td>
+        <td>{% with l=u.active_lease %}{% if l %}<a href="{% url 'tenants:detail' l.tenant.pk %}">{{ l.tenant.full_name }}</a>{% else %}—{% endif %}{% endwith %}</td>
+        <td class="text-end">{% if nav.can_manage and u.status != "OCCUPIED" %}<a class="btn btn-sm btn-outline-success py-0" href="{% url 'tenants:lease_create' %}?unit={{ u.pk }}">Lease</a>{% endif %}</td></tr>
+    {% empty %}<tr><td colspan="6" class="text-muted">No units.</td></tr>{% endfor %}
+  </table>
+</div></div>
+{% empty %}<p class="text-muted">No buildings yet. Add a building (e.g. "Block A") to start adding units.</p>{% endfor %}
+{% endblock %}

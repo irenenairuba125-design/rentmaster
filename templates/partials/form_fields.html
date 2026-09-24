@@ -1,0 +1,24 @@
+<form method="post" enctype="multipart/form-data" {% if action %}action="{{ action }}"{% endif %} novalidate>
+  {% csrf_token %}
+  {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors|join:" " }}</div>{% endif %}
+  <div class="row g-3">
+  {% for field in form %}
+    {% if field.is_hidden %}{{ field }}{% else %}
+    <div class="{% if field.field.widget.input_type == 'checkbox' %}col-12 form-check ms-2{% elif field.name in wide_fields or field.field.widget.attrs.rows %}col-12{% else %}col-md-6{% endif %}">
+      {% if field.field.widget.input_type == 'checkbox' %}
+        {{ field }} <label class="form-check-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+      {% else %}
+        <label class="form-label small fw-semibold" for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %} <span class="text-danger">*</span>{% endif %}</label>
+        {{ field }}
+      {% endif %}
+      {% if field.help_text %}<div class="form-text">{{ field.help_text|safe }}</div>{% endif %}
+      {% for e in field.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+    </div>
+    {% endif %}
+  {% endfor %}
+  </div>
+  <div class="mt-4 d-flex gap-2">
+    <button class="btn btn-primary">{{ submit_label|default:"Save" }}</button>
+    {% if not action %}<a href="javascript:history.back()" class="btn btn-light">Cancel</a>{% endif %}
+  </div>
+</form>

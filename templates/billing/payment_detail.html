@@ -1,0 +1,50 @@
+{% extends "base.html" %}{% load rm %}
+{% block heading %}Payment · {{ payment.invoice.number }}{% endblock %}
+{% block content %}
+<div class="row g-3">
+  <div class="col-lg-6"><div class="card"><div class="card-body">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <div class="h4 mb-0">{{ payment.amount|money }}</div>{% badge payment.status payment.get_status_display %}
+    </div>
+    <dl class="row small mb-0">
+      <dt class="col-5">Tenant</dt><dd class="col-7">{{ payment.invoice.lease.tenant.full_name }}</dd>
+      <dt class="col-5">Unit</dt><dd class="col-7">{{ payment.invoice.lease.unit.number }}</dd>
+      <dt class="col-5">Invoice</dt><dd class="col-7"><a href="{% url 'billing:invoice_detail' payment.invoice.pk %}">{{ payment.invoice.number }}</a></dd>
+      <dt class="col-5">Method</dt><dd class="col-7">{{ payment.get_method_display }}</dd>
+      {% if payment.payer_phone %}<dt class="col-5">Phone</dt><dd class="col-7">{{ payment.payer_phone }}</dd>{% endif %}
+      <dt class="col-5">Payer reference</dt><dd class="col-7">{{ payment.payer_reference|default:"—" }} <span class="text-muted">(unverified)</span></dd>
+      <dt class="col-5">Provider reference</dt><dd class="col-7">{{ payment.provider_reference|default:"—" }}</dd>
+      <dt class="col-5">Internal reference</dt><dd class="col-7 text-break"><code>{{ payment.internal_reference }}</code></dd>
+      <dt class="col-5">Submitted</dt><dd class="col-7">{{ payment.created_at|date:"d M Y H:i" }} by {{ payment.submitted_by|default:"—" }}</dd>
+      {% if payment.verified_at %}<dt class="col-5">Verified</dt><dd class="col-7">{{ payment.verified_at|date:"d M Y H:i" }} by {{ payment.verified_by|default:"payment provider" }}</dd>{% endif %}
+      {% if payment.failure_reason %}<dt class="col-5">Note</dt><dd class="col-7 text-danger">{{ payment.failure_reason }}</dd>{% endif %}
+    </dl>
+    {% if payment.receipt %}<a class="btn btn-success btn-sm mt-3" href="{% url 'billing:receipt_detail' payment.receipt.pk %}"><i class="bi bi-receipt"></i> View receipt {{ payment.receipt.number }}</a>{% endif %}
+    {% if payment.status == "PENDING" and is_mobile %}
+      <form method="post" action="{% url 'billing:payment_check' payment.pk %}" class="mt-3">{% csrf_token %}
+        <button class="btn btn-outline-primary btn-sm"><i class="bi bi-arrow-repeat"></i> Check status with provider</button></form>
+    {% endif %}
+  </div></div></div>
+
+  {% if is_finance and payment.status == "PENDING" %}
+  <div class="col-lg-6">
+    <div class="card mb-3 border-success"><div class="card-body">
+      <h2 class="h6">Verify manually</h2>
+      <p class="small text-muted">Only verify after finding this exact transaction on the bank or mobile-money merchant statement. The payer's reference alone is not proof of payment.</p>
+      <form method="post" action="{% url 'billing:payment_verify' payment.pk %}">{% csrf_token %}
+        <label class="form-label small fw-semibold">Reference as shown on the statement</label>
+        <input class="form-control mb-2" name="provider_reference" required value="">
+        <div class="form-check mb-2"><input class="form-check-input" type="checkbox" name="confirmed" value="yes" id="conf">
+          <label class="form-check-label small" for="conf">I have confirmed {{ payment.amount|money }} was received</label></div>
+        <button class="btn btn-success btn-sm">Verify &amp; issue receipt</button>
+      </form>
+    </div></div>
+    <div class="card border-danger"><div class="card-body">
+      <h2 class="h6">Reject</h2>
+      <form method="post" action="{% url 'billing:payment_reject' payment.pk %}" class="d-flex gap-2">{% csrf_token %}
+        {{ reject_form.reason }}<button class="btn btn-outline-danger btn-sm">Reject</button></form>
+    </div></div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
