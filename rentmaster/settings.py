@@ -19,10 +19,18 @@ def env_bool(name, default=False):
     return env(name, str(default)).lower() in ("1", "true", "yes", "on")
 
 
+# Vercel sets VERCEL=1 and the deployment's host names.
+ON_VERCEL = env("VERCEL") == "1"
+VERCEL_HOSTS = [h for h in (env("VERCEL_PROJECT_PRODUCTION_URL"), env("VERCEL_BRANCH_URL"), env("VERCEL_URL")) if h]
+
 SECRET_KEY = env("RENTMASTER_SECRET_KEY", "django-insecure-dev-only-change-me")
-DEBUG = env_bool("RENTMASTER_DEBUG", True)
+# Debug pages expose internals, so they are off by default on Vercel.
+DEBUG = env_bool("RENTMASTER_DEBUG", not ON_VERCEL)
 ALLOWED_HOSTS = [h for h in env("RENTMASTER_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if h]
 CSRF_TRUSTED_ORIGINS = [o for o in env("RENTMASTER_CSRF_TRUSTED_ORIGINS", "").split(",") if o]
+if ON_VERCEL:
+    ALLOWED_HOSTS += [".vercel.app", *VERCEL_HOSTS]
+    CSRF_TRUSTED_ORIGINS += [f"https://{h}" for h in VERCEL_HOSTS]
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -46,6 +54,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -76,9 +85,36 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "rentmaster.wsgi.application"
 
-# SQLite for development; set RENTMASTER_DB_ENGINE=postgresql (plus the
-# RENTMASTER_DB_* variables) for production.
-if env("RENTMASTER_DB_ENGINE") == "postgresql":
+# Database, in order of preference:
+#  1. DATABASE_URL / POSTGRES_URL (e.g. Neon or Vercel Postgres) - permanent data.
+#  2. RENTMASTER_DB_ENGINE=postgresql with the RENTMASTER_DB_* variables.
+#  3. On Vercel with neither: DEMO MODE - a bundled demo SQLite database is copied to
+#     /tmp on each cold start (see rentmaster/demo.py). Changes do not persist.
+#  4. Local SQLite for development.
+DATABASE_URL = env("DATABASE_URL") or env("POSTGRES_URL")
+DEMO_MODE = ON_VERCEL and not DATABASE_URL and env("RENTMASTER_DB_ENGINE") != "postgresql"
+DEMO_DB_SOURCE = BASE_DIR / "demo" / "rentmaster-demo.sqlite3"
+
+if DATABASE_URL:
+    from urllib.parse import parse_qs, unquote, urlparse
+
+    _u = urlparse(DATABASE_URL)
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": _u.path.lstrip("/"),
+            "USER": unquote(_u.username or ""),
+            "PASSWORD": unquote(_u.password or ""),
+            "HOST": _u.hostname,
+            "PORT": _u.port or 5432,
+            "OPTIONS": {"sslmode": parse_qs(_u.query).get("sslmode", ["require"])[0]},
+            "CONN_MAX_AGE": 60,
+        }
+    }
+elif DEMO_MODE:
+    DATABASES = {"default": {"ENGINE": "django.db.backends.sqlite3",
+                             "NAME": env("RENTMASTER_DEMO_DB_TARGET", "/tmp/rentmaster-demo.sqlite3")}}
+elif env("RENTMASTER_DB_ENGINE") == "postgresql":
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.postgresql",
@@ -93,7 +129,7 @@ else:
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.sqlite3",
-            "NAME": BASE_DIR / "db.sqlite3",
+            "NAME": env("RENTMASTER_SQLITE_PATH", BASE_DIR / "db.sqlite3"),
         }
     }
 
@@ -119,6 +155,13 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
 PRIVATE_MEDIA_ROOT = BASE_DIR / "private_media"
+# Vercel's filesystem is read-only apart from /tmp (and /tmp is wiped between
+# instances): uploads there are temporary. Use object storage for real uploads.
+if ON_VERCEL:
+    MEDIA_ROOT = Path("/tmp/media")
+    PRIVATE_MEDIA_ROOT = Path("/tmp/private_media")
+# Serve static files (admin CSS) straight from the apps, no collectstatic step needed.
+WHITENOISE_USE_FINDERS = True
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
@@ -126,6 +169,10 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_AGE = 60 * 60 * 8
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+if DEMO_MODE:
+    # Each Vercel instance has its own /tmp database, so keep sessions in signed cookies
+    # to stay logged in whichever instance answers.
+    SESSION_ENGINE = "django.contrib.sessions.backends.signed_cookies"
 if not DEBUG:
     SECURE_SSL_REDIRECT = env_bool("RENTMASTER_SSL_REDIRECT", True)
     SESSION_COOKIE_SECURE = True
@@ -158,11 +205,11 @@ RENTMASTER = {
     "RENT_REMINDER_DAYS_BEFORE": 3,
     "SERIOUS_ARREARS_DAYS": 30,
     # Base URL used in receipts' QR codes and notification links.
-    "SITE_URL": env("RENTMASTER_SITE_URL", "http://127.0.0.1:8000"),
+    "SITE_URL": env("RENTMASTER_SITE_URL", f"https://{VERCEL_HOSTS[0]}" if VERCEL_HOSTS else "http://127.0.0.1:8000"),
     # Roles forced to set up two-factor authentication, e.g. "SUPER_ADMIN,ACCOUNTANT".
     "REQUIRE_2FA_ROLES": [r for r in env("RENTMASTER_REQUIRE_2FA_ROLES", "").split(",") if r],
 }
-BACKUP_DIR = Path(env("RENTMASTER_BACKUP_DIR", BASE_DIR / "backups"))
+BACKUP_DIR = Path(env("RENTMASTER_BACKUP_DIR", "/tmp/backups" if ON_VERCEL else BASE_DIR / "backups"))
 
 # Payment providers. A provider with missing credentials is treated as "not
 # configured": payments through it stay PENDING and are never auto-verified.

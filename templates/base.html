@@ -84,6 +84,9 @@
       </div>
     </div>
   </div>
+  {% if DEMO_MODE %}<div class="alert alert-warning rounded-0 mb-0 py-2 small text-center no-print">
+    <i class="bi bi-info-circle"></i> <strong>Demo site.</strong> Sample data only; changes are not kept and may disappear at any time.
+  </div>{% endif %}
   <main class="p-4">
     {% for message in messages %}
       <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} alert-dismissible fade show no-print">

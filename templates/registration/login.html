@@ -19,6 +19,14 @@
       <input type="hidden" name="next" value="{{ next }}">
       <button class="btn btn-primary w-100">Sign in</button>
     </form>
+    {% if DEMO_MODE %}
+    <div class="alert alert-warning small mt-3 mb-0">
+      <strong>Demo site</strong> with sample data. Password for every account: <code>Rentmaster@2026</code><br>
+      Usernames: <code>owner</code>, <code>manager</code>, <code>accountant</code>, <code>caretaker</code>,
+      <code>john</code> (maintenance), <code>ronald</code> (tenant), <code>admin</code>.
+    </div>
+    <a class="small d-block mt-2" href="{% url 'vacancies:public_list' %}">Browse vacancies</a>
+    {% endif %}
   </div>
 </div>
 {% endblock %}

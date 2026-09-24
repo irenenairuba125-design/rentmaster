@@ -9,6 +9,7 @@ def navigation(request):
     ctx = {
         "CURRENCY": settings.RENTMASTER["CURRENCY"],
         "COMPANY_NAME": settings.RENTMASTER["COMPANY_NAME"],
+        "DEMO_MODE": settings.DEMO_MODE,
     }
     user = getattr(request, "user", None)
     if user is not None and user.is_authenticated:
