@@ -21,7 +21,7 @@ from . import services
 from .forms import (
     GenerateInvoicesForm, InvoiceItemForm, RejectPaymentForm, StaffPaymentForm, TenantPaymentForm, UtilityReadingForm,
 )
-from .gateways import GatewayError, GatewayNotConfigured
+from .gateways import GatewayError, GatewayNotConfigured, detect_network
 from .models import MOBILE_MONEY_METHODS, Invoice, Payment, PaymentMethod, Receipt, UtilityReading
 
 logger = logging.getLogger("rentmaster.billing")
@@ -145,7 +145,9 @@ def _callback_url(payment):
 @role_required(Role.TENANT)
 def invoice_pay(request, pk):
     invoice = get_object_or_404(invoices_for(request.user), pk=pk, status__in=[Invoice.Status.UNPAID, Invoice.Status.PARTIAL])
-    form = TenantPaymentForm(request.POST or None, invoice=invoice)
+    tenant = invoice.lease.tenant
+    initial = {"phone": tenant.phone, "method": detect_network(tenant.phone) or PaymentMethod.MTN_MOMO}
+    form = TenantPaymentForm(request.POST or None, invoice=invoice, initial=initial)
     if request.method == "POST" and form.is_valid():
         method, amount = form.cleaned_data["method"], form.cleaned_data["amount"]
         if method in MOBILE_MONEY_METHODS:
@@ -174,6 +176,31 @@ def invoice_pay(request, pk):
     return render(request, "billing/invoice_pay.html", {"invoice": invoice, "form": form})
 
 
+@require_POST
+@role_required(*VIEW_ROLES)
+def payment_status(request, pk):
+    """JSON status for the waiting screen. It asks the provider (never trusts the
+    browser) and is polled every few seconds while a phone payment is pending."""
+    payment = get_object_or_404(payments_for(request.user), pk=pk)
+    message = ""
+    try:
+        payment = services.check_payment_status(payment)
+    except GatewayNotConfigured:
+        message = "Waiting for the accounts office to confirm."
+    except GatewayError as exc:
+        logger.info("Status poll failed for payment %s: %s", payment.pk, exc)
+        message = "Still waiting for the payment provider."
+    payment = Payment.objects.select_related("receipt").get(pk=payment.pk)
+    receipt = getattr(payment, "receipt", None) if payment.status == Payment.Status.VERIFIED else None
+    return JsonResponse({
+        "status": payment.status,
+        "status_label": payment.get_status_display(),
+        "failure_reason": payment.failure_reason if payment.status == Payment.Status.FAILED else "",
+        "receipt_url": reverse("billing:receipt_detail", args=[receipt.pk]) if receipt else None,
+        "message": message,
+    })
+
+
 @role_required(*VIEW_ROLES)
 def payment_list(request):
     payments = payments_for(request.user).select_related("invoice__lease__tenant", "invoice__lease__unit", "receipt")
@@ -198,6 +225,8 @@ def payment_detail(request, pk):
         "is_finance": request.user.role in FINANCE_ROLES,
         "reject_form": RejectPaymentForm(),
         "is_mobile": payment.method in MOBILE_MONEY_METHODS,
+        "wait_for_phone": payment.status == Payment.Status.PENDING and payment.method in MOBILE_MONEY_METHODS
+                          and request.user.role == Role.TENANT,
     })
 
 

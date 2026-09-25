@@ -1,6 +1,30 @@
 {% extends "base.html" %}{% load rm %}
 {% block heading %}Payment · {{ payment.invoice.number }}{% endblock %}
 {% block content %}
+{% if wait_for_phone %}
+<div class="card mb-3 mx-auto border-success" style="max-width:520px" id="wait-card"><div class="card-body text-center p-4">
+  <div id="wait-pending">
+    <div class="spinner-border text-success mb-3" role="status"></div>
+    <h2 class="h5">Check your phone</h2>
+    <p class="mb-1">A payment request for <strong>{{ payment.amount|money }}</strong> was sent to <strong>{{ payment.payer_phone }}</strong>.</p>
+    <p class="small text-muted">Enter your {{ payment.get_method_display }} PIN to approve. This page updates by itself.</p>
+    {% if DEMO_MODE %}<div class="small text-info">Demo: approves itself in a few seconds.</div>{% endif %}
+    <div class="small text-muted" id="wait-note"></div>
+  </div>
+  <div id="wait-done" class="d-none">
+    <i class="bi bi-check-circle-fill text-success" style="font-size:3rem"></i>
+    <h2 class="h5 mt-2">Payment received</h2>
+    <p class="small text-muted">Thank you. Your receipt is ready.</p>
+    <a class="btn btn-success btn-lg w-100" id="receipt-link" href="#"><i class="bi bi-receipt"></i> View receipt</a>
+  </div>
+  <div id="wait-failed" class="d-none">
+    <i class="bi bi-x-circle-fill text-danger" style="font-size:3rem"></i>
+    <h2 class="h5 mt-2">Payment not completed</h2>
+    <p class="small text-muted" id="fail-reason"></p>
+    <a class="btn btn-primary w-100" href="{% url 'billing:invoice_pay' payment.invoice.pk %}">Try again</a>
+  </div>
+</div></div>
+{% endif %}
 <div class="row g-3">
   <div class="col-lg-6"><div class="card"><div class="card-body">
     <div class="d-flex justify-content-between align-items-center mb-2">
@@ -47,4 +71,28 @@
   </div>
   {% endif %}
 </div>
+{% endblock %}
+{% block scripts %}
+{% if wait_for_phone %}
+<script>
+  (function () {
+    const url = "{% url 'billing:payment_status' payment.pk %}", csrf = "{{ csrf_token }}";
+    let tries = 0;
+    const show = id => ["wait-pending", "wait-done", "wait-failed"].forEach(x => document.getElementById(x).classList.toggle("d-none", x !== id));
+    async function poll() {
+      tries++;
+      try {
+        const r = await fetch(url, { method: "POST", headers: { "X-CSRFToken": csrf } });
+        const d = await r.json();
+        if (d.status === "VERIFIED") { document.getElementById("receipt-link").href = d.receipt_url; show("wait-done"); return; }
+        if (d.status === "FAILED") { document.getElementById("fail-reason").textContent = d.failure_reason || "The payment was declined or timed out."; show("wait-failed"); return; }
+        if (d.message) document.getElementById("wait-note").textContent = d.message;
+      } catch (e) { /* network hiccup: keep waiting */ }
+      if (tries < 36) setTimeout(poll, 5000);   // about 3 minutes
+      else document.getElementById("wait-note").textContent = "Still waiting. If you approved the payment, it will show on your account shortly.";
+    }
+    setTimeout(poll, 4000);
+  })();
+</script>
+{% endif %}
 {% endblock %}

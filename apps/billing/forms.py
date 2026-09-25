@@ -47,7 +47,8 @@ class TenantPaymentForm(BootstrapFormMixin, forms.Form):
     ]
     method = forms.ChoiceField(choices=METHODS, widget=forms.RadioSelect)
     amount = forms.DecimalField(max_digits=12, decimal_places=0, min_value=500)
-    phone = forms.CharField(max_length=20, required=False, help_text="Mobile money number, e.g. 0772 123456")
+    phone = forms.CharField(max_length=20, required=False, help_text="Mobile money number, e.g. 0772 123456",
+                            widget=forms.TextInput(attrs={"inputmode": "tel", "autocomplete": "tel"}))
     bank_reference = forms.CharField(max_length=100, required=False, help_text="Bank deposit / transfer reference")
 
     def __init__(self, *args, invoice=None, **kwargs):
@@ -62,6 +63,17 @@ class TenantPaymentForm(BootstrapFormMixin, forms.Form):
         if self.invoice is not None and amount > self.invoice.balance:
             raise forms.ValidationError(f"The outstanding balance is only {int(self.invoice.balance):,}.")
         return amount
+
+    def clean_phone(self):
+        phone = self.cleaned_data.get("phone", "").strip()
+        if phone:
+            from .gateways import GatewayError, normalise_ug_msisdn
+
+            try:
+                normalise_ug_msisdn(phone)
+            except GatewayError:
+                raise forms.ValidationError("Enter a valid Ugandan number, e.g. 0772 123456.")
+        return phone
 
     def clean(self):
         data = super().clean()

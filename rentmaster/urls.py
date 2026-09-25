@@ -21,6 +21,7 @@ admin.site.site_header = "RENTMASTER administration"
 
 urlpatterns = [
     path("", core_views.dashboard, name="dashboard"),
+    path("manifest.webmanifest", core_views.web_manifest, name="web_manifest"),
     path("login/", account_views.RentmasterLoginView.as_view(), name="login"),
     path("login/verify/", account_views.login_2fa, name="login_2fa"),
     path("account/two-factor/", account_views.two_factor_setup, name="two_factor_setup"),

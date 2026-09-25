@@ -65,6 +65,25 @@ def normalise_ug_msisdn(phone):
     return digits
 
 
+# Ugandan mobile network prefixes (after the leading 0), used to pre-select the
+# right mobile-money service for the payer's number.
+NETWORK_PREFIXES = {
+    PaymentMethod.MTN_MOMO: ("76", "77", "78", "39"),
+    PaymentMethod.AIRTEL_MONEY: ("70", "74", "75", "20"),
+}
+
+
+def detect_network(phone):
+    try:
+        local = normalise_ug_msisdn(phone)[3:]
+    except GatewayError:
+        return None
+    for method, prefixes in NETWORK_PREFIXES.items():
+        if local.startswith(prefixes):
+            return method
+    return None
+
+
 class MtnMomoGateway:
     """MTN MoMo Collections API (request-to-pay)."""
 
@@ -168,9 +187,36 @@ GATEWAYS = {
 }
 
 
+class SimulatedGateway:
+    """DEMO SITE ONLY. Stands in for MTN/Airtel when settings.DEMO_MODE is on and no
+    real credentials exist, so visitors can try the whole phone-payment flow. It
+    "approves" a payment a few seconds after the prompt, as if the payer entered
+    their PIN. No money moves. It can never be used with a real database, because
+    DEMO_MODE is only on when no DATABASE_URL is configured."""
+
+    APPROVE_AFTER_SECONDS = 8
+    simulated = True
+
+    def initiate(self, payment, callback_url=None):
+        normalise_ug_msisdn(payment.payer_phone)
+
+    def check(self, payment):
+        from django.utils import timezone
+
+        if (timezone.now() - payment.created_at).total_seconds() < self.APPROVE_AFTER_SECONDS:
+            return GatewayResult("PENDING")
+        return GatewayResult("SUCCESSFUL", f"DEMO-{payment.internal_reference.hex[:10].upper()}", payment.amount,
+                             raw={"simulated": True})
+
+
 def get_gateway(method):
     """Return a configured gateway, raising GatewayNotConfigured if unavailable."""
     cls = GATEWAYS.get(method)
     if cls is None:
         raise GatewayNotConfigured(f"No online gateway for {method}")
-    return cls()
+    try:
+        return cls()
+    except GatewayNotConfigured:
+        if getattr(settings, "DEMO_MODE", False):
+            return SimulatedGateway()
+        raise

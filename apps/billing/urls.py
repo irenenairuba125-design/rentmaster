@@ -14,6 +14,7 @@ urlpatterns = [
     path("payments/", views.payment_list, name="payment_list"),
     path("payments/<int:pk>/", views.payment_detail, name="payment_detail"),
     path("payments/<int:pk>/check/", views.payment_check, name="payment_check"),
+    path("payments/<int:pk>/status/", views.payment_status, name="payment_status"),
     path("payments/<int:pk>/verify/", views.payment_verify, name="payment_verify"),
     path("payments/<int:pk>/reject/", views.payment_reject, name="payment_reject"),
     path("payments/callback/<str:provider>/<str:reference>/", views.payment_callback, name="payment_callback"),

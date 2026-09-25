@@ -1,48 +1,96 @@
 {% extends "base.html" %}{% load rm %}
-{% block heading %}Pay rent · {{ invoice.number }}{% endblock %}
+{% block heading %}Pay rent{% endblock %}
+{% block head %}
+<style>
+  .pay-option { border: 2px solid #e3e8ef; border-radius: .75rem; padding: .85rem 1rem; cursor: pointer; display: flex; align-items: center; gap: .75rem; }
+  .pay-option:has(input:checked) { border-color: #18a0a0; background: #eefaf9; }
+  .pay-option input { transform: scale(1.3); }
+  .pay-dot { width: 2.2rem; height: 2.2rem; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: .75rem; flex: none; }
+  .dot-MTN_MOMO { background: #ffcb05; color: #000; }
+  .dot-AIRTEL_MONEY { background: #e40000; color: #fff; }
+  .dot-BANK { background: #0f2440; color: #fff; }
+</style>
+{% endblock %}
 {% block content %}
-<div class="card" style="max-width: 560px"><div class="card-body p-4">
-  <div class="d-flex justify-content-between mb-3">
-    <div><div class="small text-muted">Unit {{ invoice.lease.unit.number }}</div><div class="fw-semibold">{{ invoice.period_start|date:"F Y" }}</div></div>
-    <div class="text-end"><div class="small text-muted">Outstanding</div><div class="h4 mb-0 text-danger">{{ invoice.balance|money }}</div></div>
-  </div>
-  <form method="post" novalidate>
+<div class="mx-auto" style="max-width: 520px">
+  <div class="card mb-3"><div class="card-body text-center">
+    <div class="small text-muted">{{ invoice.number }} · Unit {{ invoice.lease.unit.number }} · {{ invoice.period_start|date:"F Y" }}</div>
+    <div class="small text-muted mt-2">Amount due</div>
+    <div class="display-6 fw-bold text-danger">{{ invoice.balance|money }}</div>
+  </div></div>
+
+  {% if DEMO_MODE %}
+  <div class="alert alert-info small"><i class="bi bi-info-circle"></i> <strong>Demo:</strong> no real money moves. The payment approves itself a few seconds after you continue, as if you had entered your PIN.</div>
+  {% endif %}
+
+  <form method="post" novalidate class="card"><div class="card-body">
     {% csrf_token %}
     {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors|join:" " }}</div>{% endif %}
-    <label class="form-label small fw-semibold">Payment method</label>
-    <div class="mb-3">
+
+    <div class="fw-semibold mb-2">How do you want to pay?</div>
+    <div class="d-grid gap-2 mb-3">
       {% for radio in form.method %}
-        <div class="form-check">{{ radio.tag }} <label class="form-check-label" for="{{ radio.id_for_label }}">{{ radio.choice_label }}</label></div>
+        <label class="pay-option" for="{{ radio.id_for_label }}">
+          {{ radio.tag }}
+          <span class="pay-dot dot-{{ radio.data.value }}">{% if radio.data.value == "MTN_MOMO" %}MTN{% elif radio.data.value == "AIRTEL_MONEY" %}AIR{% else %}<i class="bi bi-bank"></i>{% endif %}</span>
+          <span>{{ radio.choice_label }}</span>
+        </label>
       {% endfor %}
       {% for e in form.method.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
     </div>
-    <div class="mb-3">
-      <label class="form-label small fw-semibold" for="{{ form.amount.id_for_label }}">Amount ({{ CURRENCY }})</label>{{ form.amount }}
-      {% for e in form.amount.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
-    </div>
+
     <div class="mb-3" id="phone-row">
-      <label class="form-label small fw-semibold" for="{{ form.phone.id_for_label }}">Mobile money number</label>{{ form.phone }}
-      <div class="form-text">{{ form.phone.help_text }}. You'll get a prompt on your phone to enter your PIN.</div>
+      <label class="form-label fw-semibold" for="{{ form.phone.id_for_label }}">Your mobile money number</label>
+      <input type="tel" name="phone" id="{{ form.phone.id_for_label }}" value="{{ form.phone.value|default_if_none:'' }}"
+             class="form-control form-control-lg" inputmode="tel" autocomplete="tel" placeholder="0772 123456">
+      <div class="form-text" id="network-hint"></div>
       {% for e in form.phone.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
     </div>
+
     <div class="mb-3 d-none" id="bank-row">
-      <label class="form-label small fw-semibold" for="{{ form.bank_reference.id_for_label }}">Bank reference</label>{{ form.bank_reference }}
-      <div class="form-text">Your payment will show as pending until the accounts office matches it on the bank statement.</div>
+      <label class="form-label fw-semibold" for="{{ form.bank_reference.id_for_label }}">Bank reference</label>{{ form.bank_reference }}
+      <div class="form-text">Shows as pending until the accounts office finds it on the bank statement.</div>
       {% for e in form.bank_reference.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
     </div>
-    <button class="btn btn-success w-100"><i class="bi bi-lock"></i> Continue</button>
-  </form>
-</div></div>
+
+    <div class="mb-3">
+      <label class="form-label fw-semibold" for="{{ form.amount.id_for_label }}">Amount ({{ CURRENCY }})</label>
+      <input type="number" name="amount" id="{{ form.amount.id_for_label }}" value="{{ form.amount.value|default_if_none:'' }}"
+             class="form-control form-control-lg" inputmode="numeric" min="500" max="{{ invoice.balance|stringformat:'d' }}" step="1">
+      <div class="form-text">You can pay part of the balance.</div>
+      {% for e in form.amount.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+    </div>
+
+    <button class="btn btn-success btn-lg w-100" id="pay-btn"><i class="bi bi-phone"></i> <span>Send payment prompt to my phone</span></button>
+    <p class="small text-muted mt-2 mb-0" id="mm-steps">You'll get a pop-up on your phone. Check the amount, then enter your Mobile Money PIN to approve.</p>
+  </div></form>
+</div>
 {% endblock %}
 {% block scripts %}
 <script>
+  const MTN = ["76", "77", "78", "39"], AIRTEL = ["70", "74", "75", "20"];
+  const phone = document.getElementById("{{ form.phone.id_for_label }}"), hint = document.getElementById("network-hint");
+  const radios = document.querySelectorAll('input[name="method"]');
+  function method() { const m = document.querySelector('input[name="method"]:checked'); return m ? m.value : null; }
+  function local(p) { let d = p.replace(/\D/g, ""); if (d.startsWith("256")) d = d.slice(3); if (d.startsWith("0")) d = d.slice(1); return d; }
   function sync() {
-    const m = document.querySelector('input[name="method"]:checked');
-    const bank = m && m.value === "BANK";
+    const bank = method() === "BANK";
     document.getElementById("phone-row").classList.toggle("d-none", bank);
     document.getElementById("bank-row").classList.toggle("d-none", !bank);
+    document.getElementById("mm-steps").classList.toggle("d-none", bank);
+    document.querySelector("#pay-btn span").textContent = bank ? "Submit bank payment" : "Send payment prompt to my phone";
   }
-  document.querySelectorAll('input[name="method"]').forEach(r => r.addEventListener("change", sync));
-  sync();
+  function detect() {
+    const d = local(phone.value);
+    let net = null;
+    if (d.length >= 2) net = MTN.includes(d.slice(0, 2)) ? "MTN_MOMO" : AIRTEL.includes(d.slice(0, 2)) ? "AIRTEL_MONEY" : null;
+    if (net && method() !== "BANK") { document.querySelector(`input[name="method"][value="${net}"]`).checked = true; }
+    hint.textContent = net === "MTN_MOMO" ? "MTN number" : net === "AIRTEL_MONEY" ? "Airtel number" : "";
+    sync();
+  }
+  radios.forEach(r => r.addEventListener("change", sync));
+  phone.addEventListener("input", detect);
+  document.querySelector("form").addEventListener("submit", () => { const b = document.getElementById("pay-btn"); b.disabled = true; b.querySelector("span").textContent = "Please wait…"; });
+  detect();
 </script>
 {% endblock %}

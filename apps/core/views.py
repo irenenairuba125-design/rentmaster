@@ -155,3 +155,21 @@ def announcement(request):
         messages.success(request, f"Announcement sent to {len(tenants)} tenant(s).")
         return redirect("dashboard")
     return render(request, "form.html", {"form": form, "title": "Send announcement to tenants", "submit_label": "Send"})
+
+
+def web_manifest(request):
+    """Lets tenants 'Add to home screen' so the portal opens like an app."""
+    from django.http import JsonResponse
+    from django.templatetags.static import static
+
+    return JsonResponse({
+        "name": settings.RENTMASTER["COMPANY_NAME"],
+        "short_name": "RENTMASTER",
+        "description": "Pay rent, see receipts and report problems.",
+        "start_url": "/",
+        "scope": "/",
+        "display": "standalone",
+        "background_color": "#0f2440",
+        "theme_color": "#0f2440",
+        "icons": [{"src": static("core/icon.svg"), "sizes": "any", "type": "image/svg+xml", "purpose": "any"}],
+    }, content_type="application/manifest+json")
