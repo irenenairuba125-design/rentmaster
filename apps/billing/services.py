@@ -284,6 +284,18 @@ def arrears_report(leases, only_owing=False):
 # Scheduled reminders
 # ---------------------------------------------------------------------------
 
+def run_daily(today=None):
+    """The daily billing job: invoices, late fees, pending payment checks, reminders.
+    Every step is idempotent."""
+    today = today or date.today()
+    return {
+        "invoices_generated": len(generate_invoices(today)),
+        "late_fees_applied": len(apply_late_fees(today)),
+        "pending_payments_checked": poll_pending_payments(),
+        "reminders": send_reminders(today),
+    }
+
+
 def send_reminders(today=None):
     today = today or date.today()
     sent = {"rent_due": 0, "overdue": 0, "lease_expiry": 0}

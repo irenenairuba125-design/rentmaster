@@ -78,6 +78,7 @@
     {% if nav.audit or nav.admin %}<li class="section">System</li>{% endif %}
     {% if nav.audit %}<li><a class="nav-link {% if '/audit/' in p %}active{% endif %}" href="{% url 'audit_log' %}"><i class="bi bi-journal-check"></i>Audit trail</a></li>{% endif %}
     {% if nav.admin %}<li><a class="nav-link" href="{% url 'admin:index' %}"><i class="bi bi-gear"></i>Users &amp; admin</a></li>{% endif %}
+    {% if nav.admin %}<li><a class="nav-link {% if '/system/setup/' in p %}active{% endif %}" href="{% url 'setup_status' %}"><i class="bi bi-rocket-takeoff"></i>Setup status</a></li>{% endif %}
   </ul>
 </nav>
 <div class="rm-main">

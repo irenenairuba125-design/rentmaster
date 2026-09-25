@@ -173,3 +173,36 @@ def web_manifest(request):
         "theme_color": "#0f2440",
         "icons": [{"src": static("core/icon.svg"), "sizes": "any", "type": "image/svg+xml", "purpose": "any"}],
     }, content_type="application/manifest+json")
+
+
+@role_required(Role.SUPER_ADMIN)
+def setup_status(request):
+    """Go-live checklist for the Super Admin; 'Test payment logins' contacts MTN/Airtel."""
+    from .setup_checks import FAIL, run_checks
+
+    live = request.method == "POST"
+    results = run_checks(live=live)
+    return render(request, "core/setup_status.html", {
+        "results": results, "live": live, "fails": sum(1 for r in results if r[0] == FAIL),
+    })
+
+
+def cron_daily(request):
+    """Daily billing job for hosts without a task scheduler (Vercel Cron calls this).
+    Requires "Authorization: Bearer <CRON_SECRET>"; disabled while CRON_SECRET is unset."""
+    import hmac
+
+    from django.http import HttpResponseForbidden, JsonResponse
+
+    from apps.billing.services import run_daily
+
+    secret = settings.CRON_SECRET
+    given = request.headers.get("Authorization", "")
+    if not secret or not hmac.compare_digest(given, f"Bearer {secret}"):
+        return HttpResponseForbidden("Forbidden")
+    if settings.DEMO_MODE:
+        return JsonResponse({"skipped": "demo mode"})
+    result = run_daily()
+    from .audit import log_action
+    log_action(f"Daily billing job: {result}")
+    return JsonResponse(result)

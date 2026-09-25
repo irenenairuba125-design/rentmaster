@@ -18,13 +18,7 @@ class Command(BaseCommand):
         parser.add_argument("--date", type=date.fromisoformat, default=None, help="Run as if today were YYYY-MM-DD")
 
     def handle(self, *args, **opts):
-        today = opts["date"] or date.today()
-        created = services.generate_invoices(today)
-        self.stdout.write(f"Invoices generated: {len(created)}")
-        fees = services.apply_late_fees(today)
-        self.stdout.write(f"Late fees applied: {len(fees)}")
-        checked = services.poll_pending_payments()
-        self.stdout.write(f"Pending mobile-money payments checked: {checked}")
-        sent = services.send_reminders(today)
-        self.stdout.write(f"Reminders sent: {sent}")
+        result = services.run_daily(opts["date"] or date.today())
+        for key, value in result.items():
+            self.stdout.write(f"{key.replace('_', ' ').capitalize()}: {value}")
         self.stdout.write(self.style.SUCCESS("Billing run complete."))

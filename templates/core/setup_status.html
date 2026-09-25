@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block heading %}Setup status{% endblock %}
+{% block content %}
+<div class="card mb-3" style="max-width: 900px"><div class="card-body">
+  <p class="small text-muted">What still needs doing before this site can take real rent. Settings are changed in Vercel under
+    <strong>Settings → Environment Variables</strong>, then <strong>Deployments → Redeploy</strong>. The full guide is in <code>GO_LIVE.md</code> in the code repository.</p>
+  <table class="table table-sm align-middle mb-3">
+    {% for status, label, detail in results %}
+      <tr>
+        <td style="width:80px">{% if status == "OK" %}<span class="badge text-bg-success">OK</span>{% elif status == "WARN" %}<span class="badge text-bg-warning">To do</span>{% else %}<span class="badge text-bg-danger">Problem</span>{% endif %}</td>
+        <td class="fw-semibold">{{ label }}</td>
+        <td class="small text-muted">{{ detail }}</td>
+      </tr>
+    {% endfor %}
+  </table>
+  {% if fails %}<div class="alert alert-danger small">{{ fails }} problem{{ fails|pluralize }} must be fixed before going live.</div>{% endif %}
+  <form method="post">{% csrf_token %}
+    <button class="btn btn-outline-primary btn-sm"><i class="bi bi-plug"></i> Test payment logins with MTN / Airtel</button>
+    <span class="small text-muted ms-2">{% if live %}Tested just now.{% else %}Signs in to each provider; nothing is charged.{% endif %}</span>
+  </form>
+</div></div>
+{% endblock %}

@@ -194,6 +194,15 @@ REST_FRAMEWORK = {
 
 EMAIL_BACKEND = env("RENTMASTER_EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend")
 DEFAULT_FROM_EMAIL = env("RENTMASTER_FROM_EMAIL", "RENTMASTER <no-reply@rentmaster.local>")
+EMAIL_HOST = env("EMAIL_HOST", "localhost")
+EMAIL_PORT = int(env("EMAIL_PORT", "587"))
+EMAIL_HOST_USER = env("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", "")
+EMAIL_USE_TLS = env_bool("EMAIL_USE_TLS", True)
+EMAIL_TIMEOUT = 15
+
+# Shared secret for scheduled jobs (Vercel Cron sends "Authorization: Bearer <CRON_SECRET>").
+CRON_SECRET = env("CRON_SECRET", "")
 
 # ---------------------------------------------------------------------------
 # RENTMASTER business settings

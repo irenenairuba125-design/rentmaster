@@ -4,6 +4,8 @@ A Django + Django REST Framework system for managing rental properties in Uganda
 The core flow is **Owner → Property → Building → Unit → Tenant → Lease → Invoice → Payment → Receipt**.
 Mobile money (MTN and Airtel) is a first-class payment method.
 
+> **Taking the site live?** Follow [GO_LIVE.md](GO_LIVE.md): secret key, permanent database, MTN/Airtel, SMS, email and the daily job. Super Admins can check progress on the **Setup status** page, or run `python manage.py check_setup --live`.
+
 ## Quick start (Windows)
 
 ```powershell

@@ -13,11 +13,8 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "rentmaster.settings")
 
 application = get_wsgi_application()
 
-from django.conf import settings  # noqa: E402
+from rentmaster import startup  # noqa: E402
 
-if settings.DEMO_MODE:
-    from rentmaster import demo
-
-    demo.prepare()
+startup.prepare()
 
 app = application
